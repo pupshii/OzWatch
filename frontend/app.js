@@ -91,6 +91,12 @@ function addLayer(info) {
 }
 
 async function refreshAll() {
+  // Status too, not just features: the server may have restarted with new settings
+  // (e.g. an API key added) and we could have missed its status messages meanwhile.
+  for (const info of await getJSON("/api/layers")) {
+    const entry = state.layers.get(info.key);
+    if (entry) entry.status = info.status;
+  }
   await Promise.all(
     [...state.layers.keys()].map(async (key) => {
       const fc = await getJSON(`/api/layers/${encodeURIComponent(key)}/features`);

@@ -27,7 +27,7 @@ application, subscribe it to the Live Traffic APIs, and put the key in `.env`.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements-dev.txt
-cd backend && uvicorn app.main:app --reload    # in-memory store, no Postgres needed
+cd backend && uvicorn app.main:app --reload --timeout-graceful-shutdown 3   # in-memory store, no Postgres needed
 ```
 
 ### Tests
