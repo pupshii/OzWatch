@@ -1,5 +1,8 @@
 # Deploying OzWatch
 
+> **Using Google Cloud's free VM?** Follow the click-by-click guide in
+> [deploy-gcp.md](deploy-gcp.md) instead.
+
 OzWatch needs **one always-on Linux machine**: the pollers and the AIS
 stream run continuously inside the API process. Free hosting tiers that put
 apps to sleep when idle won't work. Visitor numbers don't affect upstream API
@@ -47,8 +50,9 @@ domain? A free subdomain from DuckDNS works.
 ```bash
 git clone https://github.com/pupshii/OzWatch.git && cd OzWatch
 cp .env.example .env
-nano .env   # API keys, DOMAIN=ozwatch.yourdomain.com, and a strong POSTGRES_PASSWORD
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+nano .env   # API keys, DOMAIN=ozwatch.yourdomain.com, a strong POSTGRES_PASSWORD, and
+            # COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml (so plain `docker compose` includes Caddy)
+docker compose up -d --build
 ```
 
 Open `https://ozwatch.yourdomain.com`. The first certificate takes a few
@@ -61,7 +65,7 @@ seconds. Check `https://ozwatch.yourdomain.com/health`.
 
 ```bash
 git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose up -d --build
 ```
 
 Browsers reconnect by themselves after the restart (the live stream retries

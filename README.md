@@ -68,7 +68,7 @@ its own format into one common record: `id, layer, lat, lon, timestamp,
 properties`. Everything after that (storage, API, live stream, map) is shared,
 so adding a source is one file plus tests. Polled sources run on intervals
 worked out from their rate limits. The AIS websocket is buffered and written
-in 5-second batches. The 38 design decisions are explained in plain language in
+in 5-second batches. The 39 design decisions are explained in plain language in
 [docs/decisions.md](docs/decisions.md).
 
 **Stack:** Python 3.12 · FastAPI · asyncpg · PostgreSQL 16 + PostGIS 3.4 ·
@@ -137,7 +137,8 @@ builds the Docker image and smoke-tests the running stack.
 
 One small always-on Linux server (Oracle Cloud Free or a ~A$6–10/month VPS)
 running `docker compose` with Caddy for automatic HTTPS. Step by step:
-[docs/deploy.md](docs/deploy.md).
+[docs/deploy-gcp.md](docs/deploy-gcp.md) (Google Cloud free VM + free DuckDNS
+address) or [docs/deploy.md](docs/deploy.md) (any VPS).
 
 ## Data sources & attribution
 
@@ -195,6 +196,6 @@ aggregate charts. There are no per-vehicle tracks or "pattern of life" views.
 ## Project docs
 
 - [docs/data-sources.md](docs/data-sources.md): every source checked for access, limits, licence, go/no-go
-- [docs/decisions.md](docs/decisions.md): 38 design decisions in plain language
+- [docs/decisions.md](docs/decisions.md): 39 design decisions in plain language
 - [docs/plan.md](docs/plan.md): milestones and repo layout
-- [docs/deploy.md](docs/deploy.md): deployment guide
+- [docs/deploy-gcp.md](docs/deploy-gcp.md) / [docs/deploy.md](docs/deploy.md): deployment guides

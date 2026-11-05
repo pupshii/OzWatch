@@ -239,3 +239,11 @@ Not done, with reasons: QLD cameras (licence unclear), DEA hotspots (licence
 unclear), VIC cameras (no public API). Coverage limits that come from the
 sources: OpenSky and aisstream rely on volunteer receivers, so inland
 Australia and parts of WA are sparse.
+
+### 39. Background tabs stop downloading
+The live stream pauses after a tab has been hidden for a minute, and
+reconnects (with a fresh snapshot) when it's visible again. Ship and plane
+updates arrive every few seconds, so a forgotten background tab would
+otherwise download data all day: that costs visitors on mobile data, and it
+costs the server outbound traffic, which cloud providers bill by the gigabyte.
+A one-minute grace period means quick tab switches don't cause reconnect churn.

@@ -381,9 +381,18 @@ function followOpenPopup(key) {
 
 // ---------- live stream ----------
 
+// Pause the live stream when the tab has been hidden for a while: a background tab
+// would otherwise keep downloading ship/plane updates nobody sees (data costs for
+// visitors on mobile, and for the server's outbound traffic). Coming back reconnects,
+// and onopen re-fetches the snapshots, so the map is instantly current again.
+const PAUSE_HIDDEN_AFTER_MS = 60_000;
+let stream = null;
+let pauseTimer = null;
+
 function connectStream() {
   const conn = document.getElementById("conn");
   const es = new EventSource("/api/stream");
+  stream = es;
   es.onopen = () => {
     conn.textContent = "live";
     conn.className = "conn live";
@@ -406,6 +415,21 @@ function connectStream() {
     }
   };
 }
+
+document.addEventListener("visibilitychange", () => {
+  clearTimeout(pauseTimer);
+  if (document.hidden) {
+    pauseTimer = setTimeout(() => {
+      stream?.close();
+      stream = null;
+      const conn = document.getElementById("conn");
+      conn.textContent = "paused";
+      conn.className = "conn";
+    }, PAUSE_HIDDEN_AFTER_MS);
+  } else if (!stream && state.layers.size) {
+    connectStream();
+  }
+});
 
 // ---------- panel ----------
 
