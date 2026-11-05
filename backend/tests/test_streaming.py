@@ -181,3 +181,15 @@ async def test_records_one_run_per_minute(rig):
         await runner.flush()
         clock.now += timedelta(seconds=5)
     assert len(store.runs) == 1 and store.runs[0]["n"] == 13
+
+
+async def test_restart_seeds_connector_from_store(rig):
+    conn, store, runner, q, clock = rig
+    runner.ingest(boat())
+    await runner.flush()
+
+    seen = []
+    conn.seed = lambda feats: seen.extend(f.id for f in feats)
+    fresh = StreamRunner(conn, store, runner.broadcaster, clock=clock)
+    await fresh._load_existing()
+    assert seen == ["a"] and fresh.status.feature_count == 1

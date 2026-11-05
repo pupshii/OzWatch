@@ -3,7 +3,7 @@
 A live open-data map of Australia: traffic cameras, flights, ships and hazards
 on one map, with toggleable layers and a small analytics panel.
 
-> **Status: Milestone 5 of 7.** Five live layers (cameras, flights, ships, fires, earthquakes) and an analytics panel. See
+> **Status: Milestone 6 of 7.** Five live layers (cameras, flights, ships, fires, earthquakes), an analytics panel and shareable views. See
 > [docs/plan.md](docs/plan.md). The full README (screenshots, architecture
 > diagram, "what I'd do next") comes at the final milestone.
 

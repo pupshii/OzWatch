@@ -80,3 +80,22 @@ def test_usgs_filters_to_australia_and_cleans():
 
     assert feats["us7000nodp"].properties["depth_km"] is None
     assert feats["us7000nodp"].properties["link"] is None  # unsafe URL dropped
+
+
+@pytest.mark.parametrize(
+    "lat,lon,inside",
+    [
+        (-38.4, 146.3, True),  # Gippsland
+        (-30.0, 117.0, True),  # Western Australia
+        (-10.69, 142.53, True),  # Cape York tip
+        (-10.0, 142.2, True),  # Torres Strait islands
+        (-9.2, 118.0, False),  # Sumbawa, Indonesia
+        (-9.5, 125.5, False),  # Timor
+        (-9.0, 143.0, False),  # PNG south coast
+        (-41.3, 174.8, False),  # New Zealand
+    ],
+)
+def test_quake_region(lat, lon, inside):
+    from app.connectors.usgs_quakes import in_region
+
+    assert in_region(lat, lon) is inside

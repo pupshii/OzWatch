@@ -2,6 +2,8 @@
 // No chart library: a column chart, a bar list and a table cover everything here.
 // Every chart has a hover tooltip, a table view and a CSV download.
 
+import { getParam, setParam } from "./urlstate.js";
+
 const REFRESH_MS = 60_000;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -35,6 +37,7 @@ export function initAnalytics({ fireColors }) {
     drawer.hidden = !open;
     button.setAttribute("aria-expanded", String(open));
     clearInterval(timer);
+    setParam("analytics", open ? 1 : null); // shareable: the link opens with the panel showing
     if (open) {
       load();
       timer = setInterval(load, REFRESH_MS);
@@ -43,6 +46,7 @@ export function initAnalytics({ fireColors }) {
   button.addEventListener("click", () => setOpen(drawer.hidden));
   drawer.querySelector(".close").addEventListener("click", () => setOpen(false));
   document.addEventListener("keydown", (e) => e.key === "Escape" && !drawer.hidden && setOpen(false));
+  if (getParam("analytics") === "1") setOpen(true);
 }
 
 async function load() {

@@ -262,3 +262,24 @@ async def test_real_websocket_client_against_local_server(monkeypatch):
             async with aclosing(bad.stream()) as stream:
                 async for _ in stream:
                     pass
+
+
+def test_seed_restores_type_after_restart():
+    before = make()
+    before.handle(static(type_=84))
+    saved = before.handle(position())  # what the store holds
+    assert saved.properties["ship_type"] == 84
+
+    after = make()  # fresh process: empty cache
+    after.seed([saved])
+    p = after.handle(position(lat=-33.87)).properties  # position only, no static yet
+    assert p["category"] == "Tanker" and p["destination"] == "AU SYD" and p["length_m"] == 180
+
+
+def test_seed_handles_rows_saved_before_ship_type_existed():
+    old = make().handle(position())
+    old.properties.pop("ship_type")
+    old.properties["category"] = "Passenger"
+    conn = make()
+    conn.seed([old])
+    assert conn.handle(position()).properties["category"] == "Passenger"

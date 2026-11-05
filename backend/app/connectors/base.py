@@ -87,3 +87,6 @@ class StreamConnector(ABC):
     @abstractmethod
     def handle(self, raw: Any) -> Feature | None:
         """One raw message -> the updated Feature, or None if it doesn't change the map."""
+
+    def seed(self, features: list[Feature]) -> None:  # noqa: B027 - optional hook, default no-op
+        """Optional: restore per-feature state from the store after a restart."""

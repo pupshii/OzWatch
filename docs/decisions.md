@@ -204,3 +204,38 @@ as text, so the chart never relies on colour alone.
 ### 33. No fake numbers
 Without PostgreSQL (in-memory dev mode) the endpoint says analytics are
 unavailable instead of returning zeros that look like real data.
+
+### 34. Restarts don't lose what streams taught us
+AIS sends ship type only every ~6 minutes, so after a restart every ship used
+to show as "Unknown" for a while. Now the stream runner hands the stored
+features back to the connector on startup (`seed()`), which rebuilds its
+per-vessel cache. The raw AIS type code is stored for exactly this reason.
+Older rows that only have a category name map back to a representative code,
+so existing databases benefit too.
+
+### 35. "Australia" is a shape, not a box
+A lat/lon box tight enough for Australia's north coast also caught the south
+coasts of Java, Sumbawa and Timor, which have many more earthquakes than
+Australia. The quake filter is now a simple shape: south of −10.5°, plus a
+notch for the Torres Strait islands. Edge cases (Cape York's tip, Torres
+Strait, Timor, the PNG coast, NZ) are unit tests. A real-world version would
+use Australia's EEZ boundary polygon in PostGIS.
+
+### 36. No clustering, on purpose
+Clustering replaces nearby points with a numbered bubble. Here, at low zoom,
+the information *is* the individual marks: plane headings, ship-type colours,
+fire alert levels. Clustering would hide exactly that. Instead camera dots
+were made smaller and the heaviest layers draw on top. Clustering would make
+sense if one layer grew to tens of thousands of similar points.
+
+### 37. Shareable views live in the URL
+`#map=zoom/lat/lon&layers=…&analytics=1`: MapLibre maintains `map=`, the app
+adds the rest with `history.replaceState` (no page reloads, no history spam).
+Sending a link reproduces exactly what you're looking at, which makes it handy
+for bug reports and demos.
+
+### 38. Known gaps are written down, not hidden
+Not done, with reasons: QLD cameras (licence unclear), DEA hotspots (licence
+unclear), VIC cameras (no public API). Coverage limits that come from the
+sources: OpenSky and aisstream rely on volunteer receivers, so inland
+Australia and parts of WA are sparse.

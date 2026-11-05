@@ -235,8 +235,10 @@ class StreamRunner:
     async def _load_existing(self) -> None:
         """After a restart, know what's already on the map so counts and deltas are right."""
         try:
-            for f in await self.store.get_layer(self.connector.info.key):
+            existing = await self.store.get_layer(self.connector.info.key)
+            for f in existing:
                 self._sent[f.id] = fingerprint(f)
+            self.connector.seed(existing)
             self.status.feature_count = len(self._sent)
         except Exception:  # noqa: BLE001
             log.exception("could not load existing features")

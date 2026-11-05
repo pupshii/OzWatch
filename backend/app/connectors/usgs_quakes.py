@@ -25,14 +25,27 @@ from app.schema import Feature
 log = logging.getLogger(__name__)
 
 API_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson"
-# Same box as the other layers: lat -45..-9, lon 110..156.
-LAT_MIN, LAT_MAX, LON_MIN, LON_MAX = -45.0, -9.0, 110.0, 156.0
+
+
+def in_region(lat: float, lon: float) -> bool:
+    """Australia and its surrounding waters, but not neighbouring countries.
+
+    A plain box up to -9 latitude also caught the south coasts of Java,
+    Sumbawa, Flores and Timor (frequent quakes, not Australian). So: everything
+    south of -10.5 (still includes Cape York's tip at -10.7), plus a small notch
+    for the Torres Strait islands, which stops short of the PNG mainland.
+    """
+    if not (110.0 <= lon <= 156.0):
+        return False
+    if -45.0 <= lat <= -10.5:
+        return True
+    return 141.0 <= lon <= 144.0 and -10.5 < lat <= -9.5  # Torres Strait
 
 
 class UsgsQuakesConnector(Connector):
     info = LayerInfo(
         key="quakes",
-        title="Earthquakes (M2.5+, 7 days)",
+        title="Earthquakes (M2.5+, 7 days)",  # Australia + its waters
         attribution="U.S. Geological Survey",
         attribution_url="https://earthquake.usgs.gov/earthquakes/feed/",
         licence="Public domain",
@@ -63,7 +76,7 @@ class UsgsQuakesConnector(Connector):
         if geom.get("type") != "Point":
             return None
         lon, lat, *rest = geom["coordinates"]
-        if not (LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX):
+        if not in_region(lat, lon):
             return None
         p = item.get("properties") or {}
         mag = p.get("mag")

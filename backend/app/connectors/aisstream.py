@@ -73,6 +73,14 @@ class AisStreamError(RuntimeError):
     """The server sent an error message (e.g. invalid API key)."""
 
 
+# A representative AIS code per category: lets rows saved before `ship_type`
+# existed (category only) be restored after a restart.
+CATEGORY_CODE = {
+    "Cargo": 70, "Tanker": 80, "Passenger": 60, "Fishing": 30, "Tug / service": 52,
+    "Sailing / pleasure": 37, "High-speed craft": 40, "Military": 35, "Other": 90,
+}  # fmt: skip
+
+
 def ship_category(type_code: int | None) -> str:
     """Group the ~100 AIS ship type codes into a handful a map can colour."""
     if type_code is None or type_code == 0:
@@ -148,6 +156,23 @@ class AisStreamConnector(StreamConnector):
                 self.meta["connected"] = False
 
     # ---------- message handling ----------
+
+    def seed(self, features: list[Feature]) -> None:
+        """Restore what we knew about each vessel, so a restart doesn't turn every
+        ship back into "Unknown" until its next static message (~6 min)."""
+        for f in features:
+            p = f.properties
+            v = self._vessel(f.id)
+            v.update(lat=f.lat, lon=f.lon, ts=f.timestamp, sog=p.get("speed_kn"), cog=p.get("course"))
+            for key, prop in (
+                ("name", "name"), ("callsign", "callsign"), ("destination", "destination"),
+                ("imo", "imo"), ("length_m", "length_m"), ("draught_m", "draught_m"),
+                ("ais_class", "ais_class"), ("nav_status", "nav_status"),
+            ):  # fmt: skip
+                if p.get(prop) is not None:
+                    v[key] = p[prop]
+            code = p.get("ship_type")
+            v["type"] = code if code is not None else CATEGORY_CODE.get(p.get("category"))
 
     def handle(self, raw: dict[str, Any]) -> Feature | None:
         mtype = raw.get("MessageType")
@@ -246,6 +271,7 @@ class AisStreamConnector(StreamConnector):
                 "length_m": v.get("length_m"),
                 "draught_m": v.get("draught_m"),
                 "ais_class": v.get("ais_class"),
+                "ship_type": v.get("type"),  # raw AIS code, lets us restore state after a restart
                 "sample": self.demo_mode,
             },
         )

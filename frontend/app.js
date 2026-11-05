@@ -9,6 +9,7 @@
 
 /* global maplibregl */
 import { initAnalytics } from "./analytics.js";
+import { getParam, setParam } from "./urlstate.js";
 
 const BASEMAP = "https://tiles.openfreemap.org/styles/positron"; // free, no API key
 const AUSTRALIA = [[110, -45], [156, -9]];
@@ -38,7 +39,7 @@ const QUAKE_COLORS = { "Last 24 h": "#ae3ec9", "1–7 days": "#c9a3e0" };
 
 // Per-layer look and popup. New layers add an entry here.
 const LAYER_STYLE = {
-  cameras: { kind: "circle", color: "#0b6bcb", radius: 5, popup: cameraPopup },
+  cameras: { kind: "circle", color: "#0b6bcb", radius: 3.5, stroke: 1, popup: cameraPopup },
   // live: an open popup follows the feature and re-renders when it updates
   fires: { kind: "fire", popup: firePopup, colors: FIRE_COLORS, legend: FIRE_COLORS, areas: true },
   quakes: { kind: "quake", popup: quakePopup, legend: QUAKE_COLORS, decorate: decorateQuake },
@@ -57,6 +58,7 @@ const map = new maplibregl.Map({
   style: BASEMAP,
   bounds: AUSTRALIA,
   fitBoundsOptions: { padding: 20 },
+  hash: "map", // keep zoom/lat/lon in the URL (#map=...), alongside our own params
   attributionControl: { compact: true },
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
@@ -76,7 +78,10 @@ map.on("load", async () => {
 
 function addLayer(info) {
   const style = LAYER_STYLE[info.key] || DEFAULT_STYLE;
-  const entry = { info, status: info.status, features: new Map(), visible: true, row: null, mapLayers: [] };
+  // Layers listed in the URL (#layers=a,b) start visible; no list = all visible.
+  const shared = getParam("layers");
+  const visible = shared == null || shared.split(",").includes(info.key);
+  const entry = { info, status: info.status, features: new Map(), visible, row: null, mapLayers: [] };
   state.layers.set(info.key, entry);
 
   if (style.areas) {
@@ -119,7 +124,9 @@ function addLayer(info) {
   row.querySelector(".name").textContent = info.title;
   row.querySelector("input").addEventListener("change", (ev) => {
     entry.visible = ev.target.checked;
-    for (const id of entry.mapLayers) map.setLayoutProperty(id, "visibility", entry.visible ? "visible" : "none");
+    applyVisibility(entry);
+    const on = [...state.layers.values()].filter((e) => e.visible).map((e) => e.info.key);
+    setParam("layers", on.length === state.layers.size ? null : on.join(","));
   });
   const swatch = row.querySelector(".swatch");
   if (style.legend) {
@@ -128,6 +135,8 @@ function addLayer(info) {
   } else swatch.style.background = style.color;
   document.getElementById("layers").append(row);
   entry.row = row;
+  row.querySelector("input").checked = entry.visible;
+  applyVisibility(entry);
 
   // Attribution (required by the source licences)
   const li = document.createElement("li");
@@ -150,7 +159,7 @@ function circleLayer(key, style) {
       "circle-color": style.color,
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, style.radius - 2, 10, style.radius + 2],
       "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 1.5,
+      "circle-stroke-width": style.stroke ?? 1.5,
     },
   };
 }
@@ -307,6 +316,10 @@ function planeIcon(color) {
   ctx.fillStyle = color;
   ctx.fill(body);
   return ctx.getImageData(0, 0, size, size);
+}
+
+function applyVisibility(entry) {
+  for (const id of entry.mapLayers) map.setLayoutProperty(id, "visibility", entry.visible ? "visible" : "none");
 }
 
 async function refreshAll() {
