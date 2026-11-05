@@ -23,7 +23,7 @@ const SHIP_COLORS = {
   "High-speed craft": "#e8a200",
   Military: "#495057",
   Other: "#868e96",
-  Unknown: "#adb5bd",
+  Unknown: "#4c5a6b", // dark slate: still visible on the light basemap
 };
 
 // Per-layer look and popup. New layers add an entry here.
