@@ -10,7 +10,7 @@ Rough sizing assumes ~8–10 h/week part-time.
 | **M4 — Hazards** | NSW RFS incidents (polygons + points), USGS earthquakes, DEA hotspots (after licence check) | 2 days | ✅ done (hotspots deferred: licence unconfirmed) |
 | **M5 — Analytics panel** | SQL views + `/api/analytics/*`: flights over Sydney per hour, cameras by region, active fires by state, connector uptime; small charts in the panel | 2–3 days | ✅ done |
 | **M6 — More states + polish** | QLD cameras, clustering at low zoom, URL state (shareable views), dark basemap | 2 days | ✅ done (QLD cameras + clustering deliberately skipped, see decisions) |
-| **M7 — Deploy + README** | CI (GitHub Actions: ruff + pytest + PostGIS service), deploy to a free/cheap VM, screenshots, architecture diagram | 1–2 days | next |
+| **M7 — Deploy + README** | CI (GitHub Actions: ruff + pytest + PostGIS service), deploy to a free/cheap VM, screenshots, architecture diagram | 1–2 days | ✅ done (screenshots + hosting pending) |
 
 ## Repo structure
 
@@ -41,8 +41,11 @@ OzWatch/
 │   ├── Dockerfile
 │   └── requirements*.txt
 ├── frontend/                  # index.html, app.js, analytics.js, urlstate.js, style.css (no build step)
-├── docs/                      # data-sources.md, decisions.md, plan.md
-├── docker-compose.yml
+├── docs/                      # data-sources.md, decisions.md, plan.md, deploy.md, screenshots/
+├── .github/workflows/ci.yml   # lint, tests with PostGIS, Docker build + smoke test
+├── deploy/Caddyfile           # HTTPS reverse proxy for production
+├── docker-compose.yml         # local stack (db + api)
+├── docker-compose.prod.yml    # + Caddy for production
 └── .env.example
 ```
 

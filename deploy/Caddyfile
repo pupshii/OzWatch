@@ -1,0 +1,23 @@
+# Caddy gets and renews a Let's Encrypt certificate for {$DOMAIN} automatically.
+{$DOMAIN} {
+	# Server-Sent Events: no compression, no buffering - flush every event at once.
+	@stream path /api/stream
+	handle @stream {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+
+	# Everything else (page, GeoJSON, analytics): compressed.
+	handle {
+		encode zstd gzip
+		reverse_proxy api:8000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

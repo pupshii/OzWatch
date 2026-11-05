@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint and test (with PostGIS)
+    runs-on: ubuntu-latest
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: ozwatch
+          POSTGRES_PASSWORD: ozwatch
+          POSTGRES_DB: ozwatch_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ozwatch -d ozwatch_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Tests (unit + PostGIS integration)
+        env:
+          TEST_DATABASE_URL: postgresql://ozwatch:ozwatch@localhost:5432/ozwatch_test
+        run: pytest -q
+      - name: Frontend syntax check
+        working-directory: frontend
+        run: for f in *.js; do node --check "$f"; done
+
+  stack:
+    name: Docker build and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the full stack (no API keys -> sample/anonymous modes)
+        run: docker compose up -d --build
+      - name: Wait for the API to be healthy
+        run: |
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8000/health && exit 0
+            sleep 2
+          done
+          docker compose logs api
+          exit 1
+      - name: Smoke-test the endpoints
+        run: |
+          curl -fsS http://localhost:8000/api/layers | python3 -c "import sys, json; keys = [l['key'] for l in json.load(sys.stdin)]; print(keys); assert keys == ['cameras', 'fires', 'quakes', 'ships', 'flights']"
+          curl -fsS http://localhost:8000/api/layers/cameras/features | python3 -c "import sys, json; n = len(json.load(sys.stdin)['features']); print(n, 'cameras'); assert n > 0"
+          curl -fsS http://localhost:8000/api/analytics | python3 -c "import sys, json; d = json.load(sys.stdin); print('analytics available:', d['available']); assert d['available']"
+          curl -fsS http://localhost:8000/ | grep -q OzWatch
+      - name: Validate production config (compose overlay + Caddyfile)
+        env:
+          DOMAIN: example.com
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+          docker run --rm -e DOMAIN -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.8 \
+            caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - run: docker compose down -v
+        if: always()

@@ -34,7 +34,9 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      # Only reachable from this machine. In production, Caddy (docker-compose.prod.yml)
+      # is the public entry point and talks to the api over the internal network.
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
 
 volumes:
