@@ -1,0 +1,150 @@
+{
+  "type": "FeatureCollection",
+  "_note": "SAMPLE DATA for demo mode only - shaped like the TfNSW Live Traffic Cameras API. Locations are approximate; image URLs may not resolve.",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "anzac_bridge",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151.1856,
+          -33.869
+        ]
+      },
+      "properties": {
+        "region": "SYD_MET",
+        "title": "Anzac Bridge",
+        "view": "Anzac Bridge looking east towards the City.",
+        "direction": "E",
+        "href": "https://webcams.transport.nsw.gov.au/livetraffic-webcams/cameras/anzac_bridge.jpeg"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "harbour_bridge",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151.2108,
+          -33.8523
+        ]
+      },
+      "properties": {
+        "region": "SYD_MET",
+        "title": "Sydney Harbour Bridge",
+        "view": "Bradfield Highway looking south towards the City.",
+        "direction": "S",
+        "href": "https://webcams.transport.nsw.gov.au/livetraffic-webcams/cameras/harbour_bridge.jpeg"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "m4_parramatta",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151.003,
+          -33.827
+        ]
+      },
+      "properties": {
+        "region": "SYD_WEST",
+        "title": "M4 Motorway (Parramatta)",
+        "view": "M4 Motorway at Church Street looking east.",
+        "direction": "E",
+        "href": "https://webcams.transport.nsw.gov.au/livetraffic-webcams/cameras/m4_parramatta.jpeg"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "hume_hwy_liverpool",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150.9235,
+          -33.92
+        ]
+      },
+      "properties": {
+        "region": "SYD_WEST",
+        "title": "Hume Highway (Liverpool)",
+        "view": "Hume Highway at Hoxton Park Road looking north.",
+        "direction": "N",
+        "href": "https://webcams.transport.nsw.gov.au/livetraffic-webcams/cameras/hume_hwy_liverpool.jpeg"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "m1_wahroonga",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151.118,
+          -33.714
+        ]
+      },
+      "properties": {
+        "region": "SYD_NORTH",
+        "title": "M1 Pacific Motorway (Wahroonga)",
+        "view": "M1 at Pennant Hills Road looking north.",
+        "direction": "N",
+        "href": "https://webcams.transport.nsw.gov.au/livetraffic-webcams/cameras/m1_wahroonga.jpeg"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "southern_cross_drive",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151.215,
+          -33.93
+        ]
+      },
+      "properties": {
+        "region": "SYD_SOUTH",
+        "title": "Southern Cross Drive (Eastlakes)",
+        "view": "Southern Cross Drive looking north towards the City.",
+        "direction": "N",
+        "href": "https://webcams.transport.nsw.gov.au/livetraffic-webcams/cameras/southern_cross_drive.jpeg"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "newcastle_pacific_hwy",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151.692,
+          -32.902
+        ]
+      },
+      "properties": {
+        "region": "REG_NORTH",
+        "title": "Pacific Highway (Newcastle)",
+        "view": "Pacific Highway at Jesmond looking south.",
+        "direction": "S",
+        "href": "https://webcams.transport.nsw.gov.au/livetraffic-webcams/cameras/newcastle_pacific_hwy.jpeg"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "mount_ousley",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150.886,
+          -34.38
+        ]
+      },
+      "properties": {
+        "region": "REG_SOUTH",
+        "title": "M1 Princes Motorway (Mount Ousley)",
+        "view": "M1 at Mount Ousley Road looking south.",
+        "direction": "S",
+        "href": "https://webcams.transport.nsw.gov.au/livetraffic-webcams/cameras/mount_ousley.jpeg"
+      }
+    }
+  ]
+}

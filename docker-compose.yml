@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ozwatch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ozwatch}
+      POSTGRES_DB: ozwatch
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ozwatch -d ozwatch"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # Not published to the host by default. Uncomment to poke at it with psql / DBeaver:
+    # ports: ["5432:5432"]
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://ozwatch:${POSTGRES_PASSWORD:-ozwatch}@db:5432/ozwatch
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

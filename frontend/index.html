@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OzWatch</title>
+  <meta name="description" content="Live open-data map of Australia: traffic cameras, flights, ships and hazards." />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="map" aria-label="Map of Australia"></div>
+
+  <aside id="panel" aria-label="Layers">
+    <header>
+      <h1>OzWatch</h1>
+      <p class="tagline">Live open data across Australia</p>
+      <span id="conn" class="conn" title="Live connection to server">connecting…</span>
+    </header>
+    <section>
+      <h2>Layers</h2>
+      <ul id="layers"></ul>
+    </section>
+    <footer>
+      <h2>Data sources</h2>
+      <ul id="attributions"></ul>
+      <p class="fine">Locations and images come from public open-data feeds and can be delayed or wrong.
+        Not for safety-critical use.</p>
+    </footer>
+  </aside>
+
+  <template id="layer-row">
+    <li class="layer">
+      <label>
+        <input type="checkbox" checked />
+        <span class="swatch"></span>
+        <span class="name"></span>
+        <span class="count"></span>
+      </label>
+      <div class="meta">
+        <span class="dot"></span><span class="updated"></span><span class="badge demo" hidden>sample data</span>
+      </div>
+    </li>
+  </template>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
