@@ -47,6 +47,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 .dot.ok { background: var(--ok); }
 .dot.degraded { background: var(--warn); }
 .dot.error { background: var(--err); }
+.legend { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 4px 0 0 24px; font-size: 11px; color: var(--muted); }
+.legend-item { display: inline-flex; align-items: center; gap: 4px; }
+.chip { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 .badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--warn); color: #fff; }
 
 footer { font-size: 12px; color: var(--muted); }

@@ -1,8 +1,13 @@
 """The shared interface every data source implements.
 
-A connector does two things and nothing else:
-  1. fetch()     - get raw data from the source (HTTP, websocket, file...)
-  2. normalise() - turn that raw payload into a list of `Feature`s
+Two kinds of source:
+
+* `Connector` (polled, e.g. cameras, flights) does two things and nothing else:
+    1. fetch()     - get raw data from the source over HTTP
+    2. normalise() - turn that raw payload into a list of `Feature`s
+* `StreamConnector` (pushed, e.g. ships over a websocket):
+    1. stream()    - yield raw messages for as long as the connection lives
+    2. handle()    - turn one message into a `Feature` (or None)
 
 Keeping `normalise` a pure function (raw dict in, Features out) means it can
 be unit-tested against a saved sample payload with no network at all.
@@ -12,6 +17,7 @@ Scheduling, retries, storage and broadcasting live elsewhere.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,6 +38,7 @@ class LayerInfo:
     poll_seconds: int
     keep_history: bool  # moving things (planes) yes; fixed things (cameras) no
     stale_after_seconds: int  # drop features not seen for this long
+    history_min_interval_s: int = 0  # at most one history row per feature per N seconds
 
 
 class Connector(ABC):
@@ -59,3 +66,24 @@ class Connector(ABC):
     async def run_once(self) -> list[Feature]:
         raw = await self.fetch()
         return self.normalise(raw)
+
+
+class StreamConnector(ABC):
+    """A source that pushes messages to us over a long-lived connection."""
+
+    info: LayerInfo
+
+    def __init__(self) -> None:
+        self.meta: dict[str, Any] = {}
+
+    @property
+    def demo_mode(self) -> bool:
+        return False
+
+    @abstractmethod
+    def stream(self) -> AsyncIterator[Any]:
+        """Connect and yield raw messages. Raise on errors; return when the server closes."""
+
+    @abstractmethod
+    def handle(self, raw: Any) -> Feature | None:
+        """One raw message -> the updated Feature, or None if it doesn't change the map."""

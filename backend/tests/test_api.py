@@ -18,11 +18,11 @@ def client():
         Settings(database_url="", tfnsw_api_key=""),
         store=MemoryStore(),
         connectors=cameras_only,
-        start_pollers=False,
+        start_workers=False,
     )
     with TestClient(app) as c:
         # Run one poll synchronously (demo mode -> bundled sample data, no network).
-        c.portal.call(app.state.runtime.pollers["cameras"].poll_once)
+        c.portal.call(app.state.runtime.workers["cameras"].poll_once)
         yield c
 
 
@@ -72,4 +72,4 @@ def test_frontend_served(client):
 
 def test_default_connectors_register_all_layers():
     keys = [c.info.key for c, _ in default_connectors(Settings(), httpx.AsyncClient())]
-    assert keys == ["cameras", "flights"]
+    assert keys == ["cameras", "ships", "flights"]

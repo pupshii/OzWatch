@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     opensky_client_id: str = ""
     opensky_client_secret: str = ""
 
+    # aisstream.io API key (ships). Empty -> ships run on sample data.
+    aisstream_api_key: str = ""
+
     # Override poll intervals (seconds) without code changes, e.g. POLL_CAMERAS=900
     poll_cameras: int | None = None
     poll_flights: int | None = None

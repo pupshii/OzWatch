@@ -29,7 +29,7 @@ def _runtime(request: Request):
 @router.get("/api/layers")
 async def list_layers(request: Request):
     rt = _runtime(request)
-    return [{**asdict(p.connector.info), "status": p.status.as_dict()} for p in rt.pollers.values()]
+    return [{**asdict(p.connector.info), "status": p.status.as_dict()} for p in rt.workers.values()]
 
 
 @router.get("/api/layers/{key}/features")
@@ -37,7 +37,7 @@ async def layer_features(
     request: Request, key: str, bbox: str | None = Query(None, description="west,south,east,north")
 ):
     rt = _runtime(request)
-    if key not in rt.pollers:
+    if key not in rt.workers:
         raise HTTPException(404, f"unknown layer '{key}'")
     box = _parse_bbox(bbox) if bbox else None
     features = await rt.store.get_layer(key, box)
@@ -74,7 +74,7 @@ async def stream(request: Request):
 @router.get("/health")
 async def health(request: Request):
     rt = _runtime(request)
-    connectors = [p.status.as_dict() for p in rt.pollers.values()]
+    connectors = [p.status.as_dict() for p in rt.workers.values()]
     states = {c["state"] for c in connectors}
     overall = "ok" if states <= {"ok"} else ("error" if states == {"error"} else "degraded")
     return {

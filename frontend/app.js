@@ -12,10 +12,25 @@
 const BASEMAP = "https://tiles.openfreemap.org/styles/positron"; // free, no API key
 const AUSTRALIA = [[110, -45], [156, -9]];
 
+// Ship colour by AIS category (names match the backend's ship_category()).
+const SHIP_COLORS = {
+  Cargo: "#2f9e44",
+  Tanker: "#e03131",
+  Passenger: "#7048e8",
+  Fishing: "#b5651d",
+  "Tug / service": "#0c8599",
+  "Sailing / pleasure": "#d6336c",
+  "High-speed craft": "#e8a200",
+  Military: "#495057",
+  Other: "#868e96",
+  Unknown: "#adb5bd",
+};
+
 // Per-layer look and popup. New layers add an entry here.
 const LAYER_STYLE = {
   cameras: { kind: "circle", color: "#0b6bcb", radius: 5, popup: cameraPopup },
   // live: an open popup follows the feature and re-renders when it updates
+  ships: { kind: "ship", popup: shipPopup, live: true, colors: SHIP_COLORS, legend: SHIP_COLORS },
   flights: { kind: "plane", color: "#d9480f", groundColor: "#8a919c", popup: flightPopup, live: true },
 };
 const DEFAULT_STYLE = { kind: "circle", color: "#6b7280", radius: 4, popup: genericPopup };
@@ -51,7 +66,8 @@ function addLayer(info) {
   state.layers.set(info.key, entry);
 
   map.addSource(info.key, { type: "geojson", data: emptyFC(), attribution: info.attribution });
-  map.addLayer(style.kind === "plane" ? planeLayer(info.key, style) : circleLayer(info.key, style));
+  const makeLayer = { plane: planeLayer, ship: shipLayer, circle: circleLayer }[style.kind];
+  map.addLayer(makeLayer(info.key, style));
   map.on("click", info.key, (e) => {
     // Use our own copy of the feature: MapLibre's rendered copy can lag a delta behind.
     const f = entry.features.get(e.features[0].id ?? e.features[0].properties.id) || e.features[0];
@@ -71,11 +87,15 @@ function addLayer(info) {
   // Panel row
   const row = document.getElementById("layer-row").content.firstElementChild.cloneNode(true);
   row.querySelector(".name").textContent = info.title;
-  row.querySelector(".swatch").style.background = style.color;
   row.querySelector("input").addEventListener("change", (ev) => {
     entry.visible = ev.target.checked;
     map.setLayoutProperty(info.key, "visibility", entry.visible ? "visible" : "none");
   });
+  const swatch = row.querySelector(".swatch");
+  if (style.legend) {
+    row.append(legend(style.legend));
+    swatch.style.background = `conic-gradient(${Object.values(style.legend).slice(0, 4).join(", ")})`;
+  } else swatch.style.background = style.color;
   document.getElementById("layers").append(row);
   entry.row = row;
 
@@ -122,6 +142,62 @@ function planeLayer(key, style) {
       "icon-ignore-placement": true,
     },
   };
+}
+
+// Ships: a pointed hull rotated to heading when moving, a dot when stationary,
+// coloured by category. One pre-drawn image per (category, moving) pair.
+function shipLayer(key, style) {
+  for (const [cat, color] of Object.entries(style.colors)) {
+    map.addImage(`${key}|${cat}|m`, shipIcon(color, true), { pixelRatio: 2 });
+    map.addImage(`${key}|${cat}|s`, shipIcon(color, false), { pixelRatio: 2 });
+  }
+  return {
+    id: key,
+    type: "symbol",
+    source: key,
+    layout: {
+      "icon-image": [
+        "concat", `${key}|`,
+        ["match", ["get", "category"], Object.keys(style.colors), ["get", "category"], "Unknown"],
+        ["case", ["==", ["get", "moving"], true], "|m", "|s"],
+      ],
+      "icon-rotate": ["coalesce", ["get", "bearing"], 0],
+      "icon-rotation-alignment": "map",
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 3, 0.55, 10, 1.0],
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
+  };
+}
+
+function shipIcon(color, moving) {
+  const size = 48;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(2, 2);
+  const shape = new Path2D();
+  if (moving) shape.addPath(new Path2D("M12 2.5L16 9V20.5L12 22L8 20.5V9Z"));
+  else shape.arc(12, 12, 4.5, 0, Math.PI * 2);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineJoin = "round";
+  ctx.stroke(shape);
+  ctx.fillStyle = color;
+  ctx.fill(shape);
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function legend(colors) {
+  const box = el("div", null, "legend");
+  for (const [label, color] of Object.entries(colors)) {
+    const item = el("span", null, "legend-item");
+    const chip = el("span", null, "chip");
+    chip.style.background = color;
+    item.append(chip, document.createTextNode(label));
+    box.append(item);
+  }
+  return box;
 }
 
 function planeIcon(color) {
@@ -228,9 +304,13 @@ function renderMeta(entry) {
   const updated = status.last_success ? `updated ${timeAgo(status.last_success)}` : "no data yet";
   const err = status.state !== "ok" && status.last_error ? ` · ${status.last_error}` : "";
   row.querySelector(".updated").textContent = updated + err;
+  const how =
+    status.mode === "stream"
+      ? `live stream, map updated every ${status.poll_seconds}s`
+      : `polls every ${status.poll_seconds}s`;
   row.querySelector(".meta").title = status.last_success
-    ? `Last successful fetch ${fmtTime(status.last_success)} (polls every ${status.poll_seconds}s)`
-    : "";
+    ? `Last update ${fmtTime(status.last_success)} (${how})`
+    : how;
 }
 
 // ---------- popups ----------
@@ -278,6 +358,29 @@ function cameraPopup(p, info) {
   };
   btn.addEventListener("click", load);
   load();
+  return root;
+}
+
+function shipPopup(p, info) {
+  const root = el("div", null, "popup");
+  root.append(el("h3", p.name || p.title || "Vessel"));
+  const sub = [p.category !== "Unknown" && p.category, p.nav_status].filter(Boolean).join(" · ");
+  if (sub) root.append(el("p", sub, "sub"));
+
+  const rows = [];
+  if (p.speed_kn != null) rows.push(["Speed", `${p.speed_kn} kn (${(p.speed_kn * 1.852).toFixed(1)} km/h)`]);
+  if (p.course != null && p.moving) rows.push(["Course", `${p.course}°`]);
+  if (p.destination) rows.push(["Destination", p.destination]);
+  if (p.length_m) rows.push(["Length", `${p.length_m} m`]);
+  if (p.draught_m) rows.push(["Draught", `${p.draught_m} m`]);
+  rows.push(["MMSI", p.mmsi]);
+  if (p.imo) rows.push(["IMO", String(p.imo)]);
+  if (p.callsign) rows.push(["Call sign", p.callsign]);
+  if (p.ais_class) rows.push(["AIS class", p.ais_class === "A" ? "A (commercial)" : "B (small craft)"]);
+  if (p.timestamp) rows.push(["Position", `${ageText(p.timestamp)} (${fmtTime(p.timestamp)})`]);
+  root.append(kvList(rows));
+  if (p.sample) root.append(el("p", "Sample vessel. Add an aisstream.io key to .env for live ships.", "sub"));
+  root.append(credit(info));
   return root;
 }
 

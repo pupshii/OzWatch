@@ -41,6 +41,7 @@ class ConnectorStatus:
     title: str
     poll_seconds: int
     demo: bool
+    mode: str = "poll"  # poll | stream
     state: str = "starting"  # starting | ok | degraded | error
     last_attempt: datetime | None = None
     last_success: datetime | None = None
@@ -56,6 +57,7 @@ class ConnectorStatus:
             "title": self.title,
             "state": self.state,
             "demo": self.demo,
+            "mode": self.mode,
             "poll_seconds": self.poll_seconds,
             "last_attempt": iso(self.last_attempt),
             "last_success": iso(self.last_success),
@@ -66,7 +68,7 @@ class ConnectorStatus:
         }
 
 
-def _fingerprint(f: Feature) -> tuple:
+def fingerprint(f: Feature) -> tuple:
     # What counts as "changed" for the browser: position or any property.
     # Deliberately excludes timestamp, so a camera whose details are identical
     # on every poll isn't re-sent every 10 minutes.
@@ -104,7 +106,8 @@ class Poller:
         self.status.last_attempt = started
         try:
             features = await self.connector.run_once()
-            await self.store.upsert(info.key, features, seen_at=started, keep_history=info.keep_history)
+            history = features if info.keep_history else None
+            await self.store.upsert(info.key, features, seen_at=started, history=history)
             removed = await self.store.prune_stale(
                 info.key, older_than=started - timedelta(seconds=info.stale_after_seconds)
             )
@@ -113,8 +116,8 @@ class Poller:
             await self._safe_record(started, ok=False, n=0, error=self.status.last_error)
             return False
 
-        changed = [f for f in features if self._last.get(f.id) != _fingerprint(f)]
-        self._last = {f.id: _fingerprint(f) for f in features}
+        changed = [f for f in features if self._last.get(f.id) != fingerprint(f)]
+        self._last = {f.id: fingerprint(f) for f in features}
         for fid in removed:
             self._last.pop(fid, None)
 
@@ -143,7 +146,7 @@ class Poller:
 
     def _on_failure(self, exc: Exception) -> None:
         self.status.consecutive_failures += 1
-        self.status.last_error = _describe(exc)
+        self.status.last_error = describe_error(exc)
         self.status.extra = dict(self.connector.meta)
         self.status.state = "degraded" if self.status.last_success else "error"
         self._retry_after = None
@@ -169,8 +172,7 @@ class Poller:
             return float(self.poll_seconds)
         if self._retry_after is not None:
             return self._retry_after
-        backoff = min(RETRY_BASE_SECONDS * 2 ** (n - 1), RETRY_MAX_SECONDS)
-        return backoff * random.uniform(0.8, 1.2)
+        return backoff_delay(n)
 
     async def run_forever(self) -> None:
         while True:
@@ -184,7 +186,13 @@ class Poller:
             log.exception("could not record connector run")
 
 
-def _describe(exc: Exception) -> str:
+def backoff_delay(failures: int) -> float:
+    """Exponential backoff with +/-20% jitter: 15 s, 30 s, 60 s ... capped at 15 min."""
+    backoff = min(RETRY_BASE_SECONDS * 2 ** (failures - 1), RETRY_MAX_SECONDS)
+    return backoff * random.uniform(0.8, 1.2)
+
+
+def describe_error(exc: Exception) -> str:
     if isinstance(exc, httpx.HTTPStatusError):
         detail = exc.response.headers.get("X-Error-Detail", "")
         return f"HTTP {exc.response.status_code} {detail}".strip()

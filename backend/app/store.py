@@ -38,8 +38,11 @@ class Store(Protocol):
     async def init(self) -> None: ...
     async def close(self) -> None: ...
     async def upsert(
-        self, layer: str, features: list[Feature], seen_at: datetime, keep_history: bool
-    ) -> None: ...
+        self, layer: str, features: list[Feature], seen_at: datetime, history: list[Feature] | None = None
+    ) -> None:
+        """Upsert `features` as the latest state; also append `history` rows (may be a subset)."""
+        ...
+
     async def prune_stale(self, layer: str, older_than: datetime) -> list[str]: ...
     async def get_layer(self, layer: str, bbox: BBox | None = None) -> list[Feature]: ...
     async def record_run(
@@ -61,16 +64,15 @@ class MemoryStore:
     async def close(self) -> None:
         pass
 
-    async def upsert(self, layer, features, seen_at, keep_history) -> None:
+    async def upsert(self, layer, features, seen_at, history=None) -> None:
         bucket = self.latest.setdefault(layer, {})
         for f in features:
             bucket[f.id] = (f, seen_at)
-        if keep_history:
-            for f in features:
-                key = (f.layer, f.id, f.timestamp)
-                if key not in self._history_keys:
-                    self._history_keys.add(key)
-                    self.history.append(f)
+        for f in history or []:
+            key = (f.layer, f.id, f.timestamp)
+            if key not in self._history_keys:
+                self._history_keys.add(key)
+                self.history.append(f)
 
     async def prune_stale(self, layer, older_than) -> list[str]:
         bucket = self.latest.get(layer, {})
@@ -111,12 +113,12 @@ class PostgresStore:
         if self.pool:
             await self.pool.close()
 
-    async def upsert(self, layer, features, seen_at, keep_history) -> None:
-        if not features:
+    async def upsert(self, layer, features, seen_at, history=None) -> None:
+        if not features and not history:
             return
         rows = [(layer, f.id, f.lon, f.lat, f.timestamp, seen_at, f.properties) for f in features]
         async with self.pool.acquire() as conn, conn.transaction():
-            await conn.executemany(
+            await conn.executemany(  # no-op for an empty list
                 """
                 INSERT INTO features_latest (layer, id, geom, observed_at, last_seen_at, properties)
                 VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326), $5, $6, $7)
@@ -128,14 +130,14 @@ class PostgresStore:
                 """,
                 rows,
             )
-            if keep_history:
+            if history:
                 await conn.executemany(
                     """
                     INSERT INTO features_history (layer, id, geom, observed_at, properties)
                     VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326), $5, $6)
                     ON CONFLICT DO NOTHING
                     """,
-                    [(lyr, fid, lon, lat, ts, props) for lyr, fid, lon, lat, ts, _seen, props in rows],
+                    [(layer, f.id, f.lon, f.lat, f.timestamp, f.properties) for f in history],
                 )
 
     async def prune_stale(self, layer, older_than) -> list[str]:

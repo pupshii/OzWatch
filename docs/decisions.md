@@ -95,3 +95,36 @@ appearing are removed after 5 minutes, so the map doesn't show "ghost" planes.
 ### 15. Units follow the domain
 The API gives SI units (metres, m/s). The popup shows feet and knots first,
 because that's what aviation uses, with metres and km/h alongside for everyone else.
+
+### 16. Streams are batched, not written per message
+aisstream pushes many messages a second. Instead of one database write and
+one browser update per message, the `StreamRunner` keeps a buffer keyed by
+vessel (latest message wins) and flushes it every 5 s as one batch. Twenty
+reports from one ship in 5 s become one row update and one entry in one
+delta. It's micro-batching, the same idea as Spark Structured Streaming's
+trigger interval.
+
+### 17. History is throttled per object
+Ships report every few seconds when under way. Keeping all of that for 24 h
+would be millions of rows a day for little analytical value, so history keeps
+at most one row per ship per minute (`history_min_interval_s`). Flights
+already arrive only every 120 s, so they keep every poll.
+
+### 18. Two message types merged into one record
+AIS sends position reports (frequent) and ship details such as name, type and
+destination (every ~6 min) separately. The connector keeps a small
+per-vessel cache keyed by MMSI and merges them, like a stateful join in a
+streaming pipeline. The cache is capped (20,000 vessels, least recently seen
+dropped first) so memory can't grow without limit.
+
+### 19. "Not available" is data, not a value
+AIS encodes missing values as magic numbers: speed 102.3, course 360,
+heading 511, latitude 91. These are converted to nulls at the edge, so no
+chart ever shows a 102-knot container ship. Same idea as cleaning sentinel
+values like -999 in an ETL job.
+
+### 20. Reconnect with backoff, reset on success
+A websocket dropping is normal (deploys, network blips). The runner
+reconnects with the same exponential backoff as the pollers, and resets it as
+soon as messages flow again, so one bad minute doesn't leave us waiting
+15 minutes. `/health` shows `connected` and `messages_per_min` for the stream.

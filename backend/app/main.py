@@ -27,21 +27,30 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import router
 from app.broadcaster import Broadcaster
 from app.config import Settings, get_settings
-from app.connectors.base import Connector
+from app.connectors.aisstream import AisStreamConnector
+from app.connectors.base import Connector, StreamConnector
 from app.connectors.nsw_cameras import NswCamerasConnector
 from app.connectors.opensky import OpenSkyConnector
 from app.scheduler import Poller
 from app.store import Store, make_store
+from app.streaming import StreamRunner
 
 log = logging.getLogger("ozwatch")
 
 FRONTEND_DIR = Path(os.environ.get("FRONTEND_DIR", Path(__file__).resolve().parents[2] / "frontend"))
 
 
-def default_connectors(settings: Settings, client: httpx.AsyncClient) -> list[tuple[Connector, int | None]]:
+AnyConnector = Connector | StreamConnector
+
+
+def default_connectors(
+    settings: Settings, client: httpx.AsyncClient
+) -> list[tuple[AnyConnector, int | None]]:
     """(connector, poll-interval override) pairs. New sources get registered here."""
     return [
         (NswCamerasConnector(client, api_key=settings.tfnsw_api_key), settings.poll_cameras),
+        # Order = drawing order on the map: ships under flights.
+        (AisStreamConnector(api_key=settings.aisstream_api_key), None),
         (
             OpenSkyConnector(
                 client,
@@ -58,7 +67,7 @@ class Runtime:
     store: Store
     broadcaster: Broadcaster
     client: httpx.AsyncClient
-    pollers: dict[str, Poller] = field(default_factory=dict)
+    workers: dict[str, Poller | StreamRunner] = field(default_factory=dict)  # one per layer
     tasks: list[asyncio.Task] = field(default_factory=list)
 
 
@@ -66,9 +75,9 @@ def create_app(
     settings: Settings | None = None,
     store: Store | None = None,
     connectors: Callable[
-        [Settings, httpx.AsyncClient], list[tuple[Connector, int | None]]
+        [Settings, httpx.AsyncClient], list[tuple[AnyConnector, int | None]]
     ] = default_connectors,
-    start_pollers: bool = True,
+    start_workers: bool = True,
 ) -> FastAPI:
     settings = settings or get_settings()
     logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -83,15 +92,19 @@ def create_app(
         )
         await rt.store.init()
         for conn, override in connectors(settings, client):
-            rt.pollers[conn.info.key] = Poller(conn, rt.store, rt.broadcaster, poll_seconds=override)
+            rt.workers[conn.info.key] = (
+                StreamRunner(conn, rt.store, rt.broadcaster)
+                if isinstance(conn, StreamConnector)
+                else Poller(conn, rt.store, rt.broadcaster, poll_seconds=override)
+            )
             if conn.demo_mode:
                 log.warning("%s is running on SAMPLE data (no API key configured)", conn.info.key)
             if conn.meta.get("auth") == "anonymous":
                 log.warning("%s: no credentials, using anonymous access (slower polling)", conn.info.key)
         app.state.runtime = rt
-        if start_pollers:
+        if start_workers:
             rt.tasks += [
-                asyncio.create_task(p.run_forever(), name=f"poll:{k}") for k, p in rt.pollers.items()
+                asyncio.create_task(w.run_forever(), name=f"worker:{k}") for k, w in rt.workers.items()
             ]
             rt.tasks.append(
                 asyncio.create_task(_history_janitor(rt.store, settings.history_hours), name="janitor")
