@@ -160,3 +160,47 @@ users somewhere unexpected.
 DEA Hotspots would add satellite fire detections, but its licence is listed
 as "not specified". Rather than assume, it's left out until Geoscience
 Australia confirms.
+
+### 26. Analytics are plain SQL files
+Each chart is one query in `backend/sql/analytics/`, readable and runnable in
+`psql` on its own. Python only runs them and shapes the JSON. The SQL is the
+interesting part, so it isn't hidden in strings or behind an ORM.
+
+### 27. Gap filling: a missing hour is still an hour
+Hourly charts `LEFT JOIN` a `generate_series` of the last 24 hours, so a quiet
+hour shows as a zero column instead of disappearing (which would silently
+squash the time axis). Where "no data" and "zero" mean different things, they
+stay different: for fires, an hour with no successful poll is `NULL` (a gap
+in the chart), not 0 incidents.
+
+### 28. Count distinct things, not rows
+"Aircraft over Sydney per hour" is `count(DISTINCT id)`. The same aircraft
+seen on 30 polls in an hour is one aircraft, not 30. It's the classic
+grain mistake in BI work.
+
+### 29. Spatial joins without double counting
+"Busiest ports" joins ships to ports within 30 km, but Sydney Harbour and Port
+Botany are only 13 km apart, so a ship could match both. `DISTINCT ON (ship)
+... ORDER BY distance` assigns each ship to its nearest port only. Distance
+tests use a cheap index-assisted bounding box (`&&`) first, then the exact
+geodesic distance (`ST_DWithin` on `geography`, in metres).
+
+### 30. Reliability is a metric too
+Every poll is logged in `connector_runs`, so "how reliable is each source?" is
+just another query: success rate, runs, last error. It turns operational
+logging into a data-quality report.
+
+### 31. Cache, don't recompute per viewer
+Results are cached for 60 s behind a lock. Ten people with the panel open
+still cost one set of queries a minute.
+
+### 32. Charts without a chart library
+The panel's three chart forms (24-hour columns, ranked bars, a table) are
+about 150 lines of SVG/HTML, with no dependency and no build step. Every
+chart has a hover tooltip, a table view and a CSV download. Bars use one
+colour checked for contrast in light and dark mode. Values are always shown
+as text, so the chart never relies on colour alone.
+
+### 33. No fake numbers
+Without PostgreSQL (in-memory dev mode) the endpoint says analytics are
+unavailable instead of returning zeros that look like real data.

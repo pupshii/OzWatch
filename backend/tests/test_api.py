@@ -73,3 +73,8 @@ def test_frontend_served(client):
 def test_default_connectors_register_all_layers():
     keys = [c.info.key for c, _ in default_connectors(Settings(), httpx.AsyncClient())]
     assert keys == ["cameras", "fires", "quakes", "ships", "flights"]
+
+
+def test_analytics_endpoint_without_postgres(client):
+    body = client.get("/api/analytics").json()
+    assert body["available"] is False

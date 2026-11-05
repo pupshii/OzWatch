@@ -16,6 +16,9 @@
       <h1>OzWatch</h1>
       <p class="tagline">Live open data across Australia</p>
       <span id="conn" class="conn" title="Live connection to server">connecting…</span>
+      <button id="analytics-toggle" class="analytics-toggle" type="button" aria-expanded="false" aria-controls="analytics">
+        Analytics
+      </button>
     </header>
     <section>
       <h2>Layers</h2>
@@ -28,6 +31,16 @@
         Not for safety-critical use.</p>
     </footer>
   </aside>
+
+  <aside id="analytics" aria-label="Analytics" hidden>
+    <header>
+      <h2>Analytics</h2>
+      <button class="close" type="button" aria-label="Close analytics">×</button>
+    </header>
+    <p class="stamp"></p>
+    <div class="cards"><p class="empty">Loading…</p></div>
+  </aside>
+  <div id="viz-tip" role="tooltip" hidden></div>
 
   <template id="layer-row">
     <li class="layer">

@@ -8,8 +8,8 @@ Rough sizing assumes ~8–10 h/week part-time.
 | **M2 — Flights (OpenSky)** | OAuth2 token refresh, credit-aware polling (120 s), aircraft icons rotated by heading, 24 h history | 2–3 days | ✅ done |
 | **M3 — Ships (aisstream)** | First *streaming* connector: websocket consumer with reconnect, buffered batch writes, vessel popups | 2–3 days | ✅ done |
 | **M4 — Hazards** | NSW RFS incidents (polygons + points), USGS earthquakes, DEA hotspots (after licence check) | 2 days | ✅ done (hotspots deferred: licence unconfirmed) |
-| **M5 — Analytics panel** | SQL views + `/api/analytics/*`: flights over Sydney per hour, cameras by region, active fires by state, connector uptime; small charts in the panel | 2–3 days | next |
-| **M6 — More states + polish** | QLD cameras, clustering at low zoom, URL state (shareable views), dark basemap | 2 days | |
+| **M5 — Analytics panel** | SQL views + `/api/analytics/*`: flights over Sydney per hour, cameras by region, active fires by state, connector uptime; small charts in the panel | 2–3 days | ✅ done |
+| **M6 — More states + polish** | QLD cameras, clustering at low zoom, URL state (shareable views), dark basemap | 2 days | next |
 | **M7 — Deploy + README** | CI (GitHub Actions: ruff + pytest + PostGIS service), deploy to a free/cheap VM, screenshots, architecture diagram | 1–2 days | |
 
 ## Repo structure
@@ -25,6 +25,7 @@ OzWatch/
 │   │   ├── scheduler.py       # Poller: interval, backoff, change detection, health
 │   │   ├── streaming.py       # StreamRunner: websocket sources, batching, reconnects
 │   │   ├── broadcaster.py     # in-process pub/sub feeding Server-Sent Events
+│   │   ├── analytics.py       # runs sql/analytics/*.sql, caches 60 s
 │   │   ├── api/routes.py      # /api/layers, /api/layers/{key}/features, /api/stream, /health
 │   │   └── connectors/
 │   │       ├── base.py        # Connector ABC + LayerInfo
@@ -35,10 +36,11 @@ OzWatch/
 │   │       ├── usgs_quakes.py # earthquakes: USGS M2.5+ week feed, filtered to Australia
 │   │       └── samples/       # sample payloads for demo mode
 │   ├── sql/001_init.sql       # schema (idempotent)
+│   ├── sql/analytics/         # one readable .sql file per analytics chart
 │   ├── tests/                 # pytest: per-connector, scheduler, API, PostGIS integration
 │   ├── Dockerfile
 │   └── requirements*.txt
-├── frontend/                  # index.html, app.js, style.css (no build step)
+├── frontend/                  # index.html, app.js, analytics.js, style.css (no build step)
 ├── docs/                      # data-sources.md, decisions.md, plan.md
 ├── docker-compose.yml
 └── .env.example

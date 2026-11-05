@@ -8,6 +8,7 @@
 // missed while the connection was down.
 
 /* global maplibregl */
+import { initAnalytics } from "./analytics.js";
 
 const BASEMAP = "https://tiles.openfreemap.org/styles/positron"; // free, no API key
 const AUSTRALIA = [[110, -45], [156, -9]];
@@ -60,6 +61,8 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 window.ozwatch = { map, state }; // handy in the browser dev console and for end-to-end tests
+
+initAnalytics({ fireColors: FIRE_COLORS });
 
 map.on("load", async () => {
   const layers = await getJSON("/api/layers");
@@ -479,7 +482,7 @@ function firePopup(p, info) {
   if (p.location) rows.push(["Location", p.location]);
   if (p.council) rows.push(["Council", p.council]);
   if (p.agency) rows.push(["Agency", p.agency]);
-  if (p.timestamp) rows.push(["Updated", `${ageText(p.timestamp)} (${fmtTime(p.timestamp)})`]);
+  if (p.timestamp) rows.push(["Updated", `${agoText(p.timestamp)} (${fmtTime(p.timestamp)})`]);
   root.append(kvList(rows));
   if (p.link) root.append(extLink(p.link, "Details on the NSW RFS website"));
   root.append(el("p", "Not an official warning service. For current warnings use NSW RFS Fires Near Me.", "sub warn"));
@@ -493,7 +496,7 @@ function quakePopup(p, info) {
   if (p.place) root.append(el("p", p.place, "sub"));
   const rows = [["Magnitude", `${p.magnitude}${p.mag_type ? ` (${p.mag_type})` : ""}`]];
   if (p.depth_km != null) rows.push(["Depth", `${p.depth_km} km`]);
-  if (p.timestamp) rows.push(["Time", `${fmtDateTime(p.timestamp)} (${ageText(p.timestamp).replace(" old", " ago")})`]);
+  if (p.timestamp) rows.push(["Time", `${fmtDateTime(p.timestamp)} (${agoText(p.timestamp)})`]);
   if (p.felt_reports) rows.push(["Felt reports", fmtNum(p.felt_reports)]);
   if (p.review_status) rows.push(["Status", p.review_status === "reviewed" ? "Reviewed by a seismologist" : "Automatic"]);
   if (p.tsunami_flag) rows.push(["Tsunami", "Flagged by USGS: check official warnings"]);
@@ -617,6 +620,10 @@ function ageText(iso) {
   if (s < 5400) return `${Math.round(s / 60)} min old`;
   if (s < 172800) return `${Math.round(s / 3600)} h old`;
   return `${Math.round(s / 86400)} days old`;
+}
+
+function agoText(iso) {
+  return ageText(iso).replace(" old", " ago");
 }
 
 function fmtDateTime(d) {

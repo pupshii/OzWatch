@@ -3,6 +3,7 @@
 GET /api/layers                     layer metadata, attribution and live status
 GET /api/layers/{key}/features      current GeoJSON FeatureCollection (optional ?bbox=w,s,e,n)
 GET /api/stream                     Server-Sent Events: live deltas + status changes
+GET /api/analytics                  analytics panel data (needs PostgreSQL; cached 60 s)
 GET /health                         per-connector health, for humans and uptime checks
 """
 
@@ -69,6 +70,11 @@ async def stream(request: Request):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/api/analytics")
+async def analytics(request: Request):
+    return await _runtime(request).analytics.get()
 
 
 @router.get("/health")

@@ -24,6 +24,7 @@ import httpx
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.analytics import Analytics
 from app.api.routes import router
 from app.broadcaster import Broadcaster
 from app.config import Settings, get_settings
@@ -73,6 +74,7 @@ class Runtime:
     client: httpx.AsyncClient
     workers: dict[str, Poller | StreamRunner] = field(default_factory=dict)  # one per layer
     tasks: list[asyncio.Task] = field(default_factory=list)
+    analytics: Analytics | None = None
 
 
 def create_app(
@@ -95,6 +97,7 @@ def create_app(
             store=store or make_store(settings.database_url), broadcaster=Broadcaster(), client=client
         )
         await rt.store.init()
+        rt.analytics = Analytics(rt.store)
         for conn, override in connectors(settings, client):
             rt.workers[conn.info.key] = (
                 StreamRunner(conn, rt.store, rt.broadcaster)

@@ -3,7 +3,7 @@
 A live open-data map of Australia: traffic cameras, flights, ships and hazards
 on one map, with toggleable layers and a small analytics panel.
 
-> **Status: Milestone 4 of 7.** NSW traffic cameras, flights, ships, NSW fires and earthquakes work end to end. See
+> **Status: Milestone 5 of 7.** Five live layers (cameras, flights, ships, fires, earthquakes) and an analytics panel. See
 > [docs/plan.md](docs/plan.md). The full README (screenshots, architecture
 > diagram, "what I'd do next") comes at the final milestone.
 
@@ -50,6 +50,7 @@ TEST_DATABASE_URL=postgresql://ozwatch:ozwatch@localhost:5432/ozwatch pytest -m 
 | `GET /api/layers` | Layers, attribution, live status |
 | `GET /api/layers/{key}/features?bbox=w,s,e,n` | GeoJSON FeatureCollection |
 | `GET /api/stream` | Server-Sent Events: `delta` and `status` messages |
+| `GET /api/analytics` | Analytics panel data (SQL in `backend/sql/analytics/`; needs PostgreSQL) |
 | `GET /health` | Per-connector health (`ok` / `degraded` / `error`) |
 | `GET /docs` | Interactive OpenAPI docs (FastAPI) |
 
