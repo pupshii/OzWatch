@@ -23,7 +23,10 @@ services:
     environment:
       DATABASE_URL: postgresql://ozwatch:${POSTGRES_PASSWORD:-ozwatch}@db:5432/ozwatch
       TFNSW_API_KEY: ${TFNSW_API_KEY:-}
+      OPENSKY_CLIENT_ID: ${OPENSKY_CLIENT_ID:-}
+      OPENSKY_CLIENT_SECRET: ${OPENSKY_CLIENT_SECRET:-}
       POLL_CAMERAS: ${POLL_CAMERAS:-}
+      POLL_FLIGHTS: ${POLL_FLIGHTS:-}
       HISTORY_HOURS: ${HISTORY_HOURS:-24}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:

@@ -52,6 +52,7 @@ class MemoryStore:
     def __init__(self) -> None:
         self.latest: dict[str, dict[str, tuple[Feature, datetime]]] = {}
         self.history: list[Feature] = []
+        self._history_keys: set[tuple] = set()
         self.runs: list[dict] = []
 
     async def init(self) -> None:
@@ -65,8 +66,11 @@ class MemoryStore:
         for f in features:
             bucket[f.id] = (f, seen_at)
         if keep_history:
-            seen = {(h.layer, h.id, h.timestamp) for h in self.history}
-            self.history.extend(f for f in features if (f.layer, f.id, f.timestamp) not in seen)
+            for f in features:
+                key = (f.layer, f.id, f.timestamp)
+                if key not in self._history_keys:
+                    self._history_keys.add(key)
+                    self.history.append(f)
 
     async def prune_stale(self, layer, older_than) -> list[str]:
         bucket = self.latest.get(layer, {})
@@ -85,6 +89,7 @@ class MemoryStore:
     async def trim_history(self, before) -> int:
         n0 = len(self.history)
         self.history = [h for h in self.history if h.timestamp >= before]
+        self._history_keys = {(h.layer, h.id, h.timestamp) for h in self.history}
         return n0 - len(self.history)
 
 

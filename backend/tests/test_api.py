@@ -1,14 +1,25 @@
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
-from app.main import create_app
+from app.connectors.nsw_cameras import NswCamerasConnector
+from app.main import create_app, default_connectors
 from app.store import MemoryStore
+
+
+def cameras_only(settings, client):
+    return [(NswCamerasConnector(client, api_key=""), None)]
 
 
 @pytest.fixture
 def client():
-    app = create_app(Settings(database_url="", tfnsw_api_key=""), store=MemoryStore(), start_pollers=False)
+    app = create_app(
+        Settings(database_url="", tfnsw_api_key=""),
+        store=MemoryStore(),
+        connectors=cameras_only,
+        start_pollers=False,
+    )
     with TestClient(app) as c:
         # Run one poll synchronously (demo mode -> bundled sample data, no network).
         c.portal.call(app.state.runtime.pollers["cameras"].poll_once)
@@ -57,3 +68,8 @@ def test_health(client):
 def test_frontend_served(client):
     r = client.get("/")
     assert r.status_code == 200 and "OzWatch" in r.text
+
+
+def test_default_connectors_register_all_layers():
+    keys = [c.info.key for c, _ in default_connectors(Settings(), httpx.AsyncClient())]
+    assert keys == ["cameras", "flights"]

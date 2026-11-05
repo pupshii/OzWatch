@@ -62,6 +62,7 @@ class ConnectorStatus:
             "last_error": self.last_error,
             "consecutive_failures": self.consecutive_failures,
             "feature_count": self.feature_count,
+            "extra": self.extra,
         }
 
 
@@ -132,6 +133,7 @@ class Poller:
         self.status.last_error = None
         self.status.consecutive_failures = 0
         self.status.feature_count = len(features)
+        self.status.extra = dict(self.connector.meta)
         self.broadcaster.publish({"type": "status", "layer": info.key, "status": self.status.as_dict()})
         await self._safe_record(started, ok=True, n=len(features), error=None)
         log.info(
@@ -142,6 +144,7 @@ class Poller:
     def _on_failure(self, exc: Exception) -> None:
         self.status.consecutive_failures += 1
         self.status.last_error = _describe(exc)
+        self.status.extra = dict(self.connector.meta)
         self.status.state = "degraded" if self.status.last_success else "error"
         self._retry_after = None
         if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429:

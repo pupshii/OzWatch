@@ -20,8 +20,13 @@ class Settings(BaseSettings):
     # Transport for NSW Open Data Hub key. Empty -> cameras run on sample data.
     tfnsw_api_key: str = ""
 
+    # OpenSky Network API client (OAuth2 client credentials). Empty -> anonymous, slower polling.
+    opensky_client_id: str = ""
+    opensky_client_secret: str = ""
+
     # Override poll intervals (seconds) without code changes, e.g. POLL_CAMERAS=900
     poll_cameras: int | None = None
+    poll_flights: int | None = None
 
     history_hours: int = 24
     log_level: str = "INFO"

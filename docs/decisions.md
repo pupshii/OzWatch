@@ -72,3 +72,26 @@ working map without registering anywhere.
 `PostgresStore` and `MemoryStore` implement the same `Store` protocol. Tests
 run in milliseconds against memory. A separate integration test (enabled with
 `TEST_DATABASE_URL`) checks the real PostGIS SQL.
+
+### 12. Polling rate is worked out from the API budget, not guessed
+OpenSky gives 4,000 credits a day, and a query the size of Australia costs 4
+credits, so the most we can afford is one call every ~86 s. We poll every
+120 s (720 calls, 2,880 credits), which leaves headroom for restarts and
+retries. Without credentials it drops to anonymous mode (400 credits, every
+15 min). `/health` shows `credits_remaining` from the API's own
+`X-Rate-Limit-Remaining` header, so you can see the budget being used.
+
+### 13. OAuth2 tokens are cached, not fetched per request
+The access token is reused until a minute before it expires, then refreshed.
+If the API still answers 401 (for example the token was revoked), we refresh
+once and retry, but never loop. That halves the number of HTTP calls and
+avoids hammering the auth server.
+
+### 14. Positions are filtered for freshness
+OpenSky returns the last known position even if it is minutes old. Anything
+older than 5 minutes at query time is dropped, and aircraft that stop
+appearing are removed after 5 minutes, so the map doesn't show "ghost" planes.
+
+### 15. Units follow the domain
+The API gives SI units (metres, m/s). The popup shows feet and knots first,
+because that's what aviation uses, with metres and km/h alongside for everyone else.

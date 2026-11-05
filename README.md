@@ -3,7 +3,7 @@
 A live open-data map of Australia: traffic cameras, flights, ships and hazards
 on one map, with toggleable layers and a small analytics panel.
 
-> **Status: Milestone 1 of 7.** NSW traffic cameras work end to end. See
+> **Status: Milestone 2 of 7.** NSW traffic cameras and live flights work end to end. See
 > [docs/plan.md](docs/plan.md). The full README (screenshots, architecture
 > diagram, "what I'd do next") comes at the final milestone.
 
@@ -18,7 +18,9 @@ docker compose up --build
 ```
 
 Without an API key the cameras layer runs on **sample data** (marked in the
-UI). For live data, register free at the
+UI). Flights work without credentials too (anonymous OpenSky access, updated
+every 15 min). Add `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` from your
+OpenSky account's API client page for updates every 2 min. For live data, register free at the
 [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au), create an
 application, subscribe it to the Live Traffic APIs, and put the key in `.env`.
 
@@ -57,5 +59,9 @@ TEST_DATABASE_URL=postgresql://ozwatch:ozwatch@localhost:5432/ozwatch pytest -m 
 
 ## Attribution
 
-Camera data © Transport for NSW (CC BY). Basemap © OpenStreetMap contributors,
+Camera data © Transport for NSW (CC BY).
+Flight data from [The OpenSky Network](https://opensky-network.org), used under its
+non-commercial terms: Matthias Schäfer, Martin Strohmeier, Vincent Lenders, Ivan
+Martinovic and Matthias Wilhelm, "Bringing Up OpenSky: A Large-scale ADS-B Sensor
+Network for Research", IPSN 2014. Basemap © OpenStreetMap contributors,
 OpenMapTiles, served by OpenFreeMap. Map rendering by MapLibre GL JS.

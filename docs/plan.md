@@ -5,8 +5,8 @@ Rough sizing assumes ~8–10 h/week part-time.
 | Milestone | Scope | Est. | Status |
 |-----------|-------|------|--------|
 | **M1 — Skeleton + NSW cameras** | Connector interface, poller (backoff, health), PostGIS store, SSE, MapLibre map with toggle panel, camera popups, demo mode, Docker, tests | 3–4 days | ✅ done |
-| **M2 — Flights (OpenSky)** | OAuth2 token refresh, credit-aware polling (120 s), aircraft icons rotated by heading, 24 h history | 2–3 days | next |
-| **M3 — Ships (aisstream)** | First *streaming* connector: websocket consumer with reconnect, buffered batch writes, vessel popups | 2–3 days | |
+| **M2 — Flights (OpenSky)** | OAuth2 token refresh, credit-aware polling (120 s), aircraft icons rotated by heading, 24 h history | 2–3 days | ✅ done |
+| **M3 — Ships (aisstream)** | First *streaming* connector: websocket consumer with reconnect, buffered batch writes, vessel popups | 2–3 days | next |
 | **M4 — Hazards** | NSW RFS incidents (polygons + points), USGS earthquakes, DEA hotspots (after licence check) | 2 days | |
 | **M5 — Analytics panel** | SQL views + `/api/analytics/*`: flights over Sydney per hour, cameras by region, active fires by state, connector uptime; small charts in the panel | 2–3 days | |
 | **M6 — More states + polish** | QLD cameras, clustering at low zoom, URL state (shareable views), dark basemap | 2 days | |
@@ -28,6 +28,7 @@ OzWatch/
 │   │   └── connectors/
 │   │       ├── base.py        # Connector ABC + LayerInfo
 │   │       ├── nsw_cameras.py
+│   │       ├── opensky.py     # flights: OAuth2 + credit-aware polling
 │   │       └── samples/       # sample payloads for demo mode
 │   ├── sql/001_init.sql       # schema (idempotent)
 │   ├── tests/                 # pytest: per-connector, scheduler, API, PostGIS integration

@@ -1,0 +1,13 @@
+{
+  "_note": "Hand-made sample shaped like GET /api/states/all?extended=1 (field order per OpenSky docs).",
+  "time": 1762300000,
+  "states": [
+    ["7c6b2d", "QFA401  ", "Australia", 1762299998, 1762299999, 151.17, -33.94, 1234.4, false, 140.2, 182.5, -5.2, null, 1300.1, "3021", false, 0, 6],
+    ["7c4ef5", "VOZ832  ", "Australia", 1762299995, 1762299999, 144.84, -37.67, null, false, 230.0, 45.0, 0.0, null, 10668.0, null, false, 0, 4],
+    ["7c1abc", "        ", "Australia", 1762299990, 1762299995, 153.12, -27.38, 0.0, true, 5.1, 270.0, null, null, null, null, false, 0, 2],
+    ["7c0000", "NOPOS   ", "Australia", null, 1762299999, null, null, null, false, null, null, null, null, null, null, false, 0, 0],
+    ["7c9999", "STALE1  ", "Australia", 1762299000, 1762299010, 150.0, -30.0, 9000.0, false, 200.0, 0.0, 0.0, null, 9100.0, null, false, 0, 4],
+    ["c81234", "ANZ123  ", "New Zealand", 1762299999, 1762299999, 0.0, 0.0, 11000.0, false, 250.0, 90.0, 0.0, null, 11100.0, null, false, 0, 6],
+    ["7c5555", "SHORT"]
+  ]
+}

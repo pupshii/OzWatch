@@ -14,12 +14,15 @@ const AUSTRALIA = [[110, -45], [156, -9]];
 
 // Per-layer look and popup. New layers add an entry here.
 const LAYER_STYLE = {
-  cameras: { color: "#0b6bcb", radius: 5, popup: cameraPopup },
+  cameras: { kind: "circle", color: "#0b6bcb", radius: 5, popup: cameraPopup },
+  // live: an open popup follows the feature and re-renders when it updates
+  flights: { kind: "plane", color: "#d9480f", groundColor: "#8a919c", popup: flightPopup, live: true },
 };
-const DEFAULT_STYLE = { color: "#6b7280", radius: 4, popup: genericPopup };
+const DEFAULT_STYLE = { kind: "circle", color: "#6b7280", radius: 4, popup: genericPopup };
 
 const state = {
   layers: new Map(), // key -> { info, status, features: Map(id -> geojson), visible, row }
+  openPopup: null, // { layer, id, popup } for the popup currently on screen
 };
 
 const map = new maplibregl.Map({
@@ -48,21 +51,19 @@ function addLayer(info) {
   state.layers.set(info.key, entry);
 
   map.addSource(info.key, { type: "geojson", data: emptyFC(), attribution: info.attribution });
-  map.addLayer({
-    id: info.key,
-    type: "circle",
-    source: info.key,
-    paint: {
-      "circle-color": style.color,
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, style.radius - 2, 10, style.radius + 2],
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 1.5,
-    },
-  });
+  map.addLayer(style.kind === "plane" ? planeLayer(info.key, style) : circleLayer(info.key, style));
   map.on("click", info.key, (e) => {
-    const f = e.features[0];
-    const node = style.popup(f.properties, info);
-    new maplibregl.Popup({ maxWidth: "360px" }).setLngLat(f.geometry.coordinates).setDOMContent(node).addTo(map);
+    // Use our own copy of the feature: MapLibre's rendered copy can lag a delta behind.
+    const f = entry.features.get(e.features[0].id ?? e.features[0].properties.id) || e.features[0];
+    const popup = new maplibregl.Popup({ maxWidth: "360px" })
+      .setLngLat(f.geometry.coordinates)
+      .setDOMContent(style.popup(f.properties, info))
+      .addTo(map);
+    const open = { layer: info.key, id: f.properties.id, popup };
+    state.openPopup = open;
+    popup.on("close", () => {
+      if (state.openPopup === open) state.openPopup = null;
+    });
   });
   map.on("mouseenter", info.key, () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", info.key, () => (map.getCanvas().style.cursor = ""));
@@ -88,6 +89,58 @@ function addLayer(info) {
   document.getElementById("attributions").append(li);
 
   renderMeta(entry);
+}
+
+function circleLayer(key, style) {
+  return {
+    id: key,
+    type: "circle",
+    source: key,
+    paint: {
+      "circle-color": style.color,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, style.radius - 2, 10, style.radius + 2],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.5,
+    },
+  };
+}
+
+// Aircraft: a plane icon rotated to its track; grey when on the ground.
+function planeLayer(key, style) {
+  map.addImage(`${key}-air`, planeIcon(style.color), { pixelRatio: 2 });
+  map.addImage(`${key}-ground`, planeIcon(style.groundColor), { pixelRatio: 2 });
+  return {
+    id: key,
+    type: "symbol",
+    source: key,
+    layout: {
+      "icon-image": ["case", ["==", ["get", "on_ground"], true], `${key}-ground`, `${key}-air`],
+      "icon-rotate": ["coalesce", ["get", "heading"], 0],
+      "icon-rotation-alignment": "map", // rotate relative to north, not the screen
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 3, 0.6, 9, 1.0],
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
+  };
+}
+
+function planeIcon(color) {
+  const size = 48; // drawn at 2x, displayed at 24 px
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(2, 2);
+  const body = new Path2D(
+    "M12 2C12.8 2 13.3 2.8 13.3 3.8V9L21 13.5V15.5L13.3 13.2V18.2L15.6 20V21.6L12 20.6L8.4 21.6V20" +
+      "L10.7 18.2V13.2L3 15.5V13.5L10.7 9V3.8C10.7 2.8 11.2 2 12 2Z",
+  );
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineJoin = "round";
+  ctx.stroke(body);
+  ctx.fillStyle = color;
+  ctx.fill(body);
+  return ctx.getImageData(0, 0, size, size);
 }
 
 async function refreshAll() {
@@ -119,6 +172,17 @@ function pushToMap(key) {
   const entry = state.layers.get(key);
   map.getSource(key).setData({ type: "FeatureCollection", features: [...entry.features.values()] });
   renderMeta(entry);
+  followOpenPopup(key);
+}
+
+// Keep an open popup attached to a moving feature, with fresh details.
+function followOpenPopup(key) {
+  const open = state.openPopup;
+  if (!open || open.layer !== key) return;
+  const style = LAYER_STYLE[key] || DEFAULT_STYLE;
+  const f = state.layers.get(key).features.get(open.id);
+  if (!f || !style.live) return; // gone (keeps last details), or a static layer like cameras
+  open.popup.setLngLat(f.geometry.coordinates).setDOMContent(style.popup(f.properties, state.layers.get(key).info));
 }
 
 // ---------- live stream ----------
@@ -217,6 +281,34 @@ function cameraPopup(p, info) {
   return root;
 }
 
+function flightPopup(p, info) {
+  const root = el("div", null, "popup");
+  root.append(el("h3", p.callsign || p.title || "Aircraft"));
+  const sub = [p.category, p.origin_country && `registered in ${p.origin_country}`].filter(Boolean).join(" · ");
+  if (sub) root.append(el("p", sub, "sub"));
+
+  const rows = [];
+  if (p.on_ground) rows.push(["Status", "On the ground"]);
+  else if (p.altitude_ft != null)
+    rows.push(["Altitude", `${fmtNum(p.altitude_ft)} ft (${fmtNum(Math.round(p.altitude_ft / 3.28084))} m)`]);
+  if (p.speed_kt != null) rows.push(["Speed", `${fmtNum(p.speed_kt)} kt (${fmtNum(Math.round(p.speed_kt * 1.852))} km/h)`]);
+  if (p.heading != null) rows.push(["Track", `${p.heading}°`]);
+  if (p.vertical_rate_fpm != null && Math.abs(p.vertical_rate_fpm) >= 100)
+    rows.push(["Vertical", `${p.vertical_rate_fpm > 0 ? "climbing" : "descending"} ${fmtNum(Math.abs(p.vertical_rate_fpm))} ft/min`]);
+  if (p.squawk) rows.push(["Squawk", p.squawk]);
+  if (p.icao24) rows.push(["ICAO 24-bit", p.icao24]);
+  if (p.timestamp) rows.push(["Position", `${ageText(p.timestamp)} (${fmtTime(p.timestamp)})`]);
+  root.append(kvList(rows));
+  root.append(credit(info));
+  return root;
+}
+
+function kvList(rows) {
+  const dl = el("dl", null, "kv");
+  for (const [k, v] of rows) dl.append(el("dt", k), el("dd", v));
+  return dl;
+}
+
 function genericPopup(p, info) {
   const root = el("div", null, "popup");
   root.append(el("h3", p.title || p.id));
@@ -264,6 +356,15 @@ function timeAgo(iso) {
   if (s < 60) return "just now";
   if (s < 3600) return `${Math.round(s / 60)} min ago`;
   return `${Math.round(s / 3600)} h ago`;
+}
+
+function ageText(iso) {
+  const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  return s < 90 ? `${s} s old` : `${Math.round(s / 60)} min old`;
+}
+
+function fmtNum(n) {
+  return Number(n).toLocaleString("en-AU");
 }
 
 function fmtTime(d) {

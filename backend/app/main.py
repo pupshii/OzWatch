@@ -29,6 +29,7 @@ from app.broadcaster import Broadcaster
 from app.config import Settings, get_settings
 from app.connectors.base import Connector
 from app.connectors.nsw_cameras import NswCamerasConnector
+from app.connectors.opensky import OpenSkyConnector
 from app.scheduler import Poller
 from app.store import Store, make_store
 
@@ -41,6 +42,14 @@ def default_connectors(settings: Settings, client: httpx.AsyncClient) -> list[tu
     """(connector, poll-interval override) pairs. New sources get registered here."""
     return [
         (NswCamerasConnector(client, api_key=settings.tfnsw_api_key), settings.poll_cameras),
+        (
+            OpenSkyConnector(
+                client,
+                client_id=settings.opensky_client_id,
+                client_secret=settings.opensky_client_secret,
+            ),
+            settings.poll_flights,
+        ),
     ]
 
 
@@ -77,6 +86,8 @@ def create_app(
             rt.pollers[conn.info.key] = Poller(conn, rt.store, rt.broadcaster, poll_seconds=override)
             if conn.demo_mode:
                 log.warning("%s is running on SAMPLE data (no API key configured)", conn.info.key)
+            if conn.meta.get("auth") == "anonymous":
+                log.warning("%s: no credentials, using anonymous access (slower polling)", conn.info.key)
         app.state.runtime = rt
         if start_pollers:
             rt.tasks += [

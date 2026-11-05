@@ -39,6 +39,9 @@ class Connector(ABC):
 
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
+        # Small facts about the last fetch worth showing on /health
+        # (e.g. remaining API credits). Copied into the poller status.
+        self.meta: dict[str, Any] = {}
 
     @property
     def demo_mode(self) -> bool:
