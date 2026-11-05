@@ -19,11 +19,13 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    env_file:
-      - path: .env
-        required: false
+    # Values come from .env (Compose reads it automatically); blank if unset.
     environment:
       DATABASE_URL: postgresql://ozwatch:${POSTGRES_PASSWORD:-ozwatch}@db:5432/ozwatch
+      TFNSW_API_KEY: ${TFNSW_API_KEY:-}
+      POLL_CAMERAS: ${POLL_CAMERAS:-}
+      HISTORY_HOURS: ${HISTORY_HOURS:-24}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:
         condition: service_healthy
