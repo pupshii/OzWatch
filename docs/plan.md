@@ -7,8 +7,8 @@ Rough sizing assumes ~8–10 h/week part-time.
 | **M1 — Skeleton + NSW cameras** | Connector interface, poller (backoff, health), PostGIS store, SSE, MapLibre map with toggle panel, camera popups, demo mode, Docker, tests | 3–4 days | ✅ done |
 | **M2 — Flights (OpenSky)** | OAuth2 token refresh, credit-aware polling (120 s), aircraft icons rotated by heading, 24 h history | 2–3 days | ✅ done |
 | **M3 — Ships (aisstream)** | First *streaming* connector: websocket consumer with reconnect, buffered batch writes, vessel popups | 2–3 days | ✅ done |
-| **M4 — Hazards** | NSW RFS incidents (polygons + points), USGS earthquakes, DEA hotspots (after licence check) | 2 days | next |
-| **M5 — Analytics panel** | SQL views + `/api/analytics/*`: flights over Sydney per hour, cameras by region, active fires by state, connector uptime; small charts in the panel | 2–3 days | |
+| **M4 — Hazards** | NSW RFS incidents (polygons + points), USGS earthquakes, DEA hotspots (after licence check) | 2 days | ✅ done (hotspots deferred: licence unconfirmed) |
+| **M5 — Analytics panel** | SQL views + `/api/analytics/*`: flights over Sydney per hour, cameras by region, active fires by state, connector uptime; small charts in the panel | 2–3 days | next |
 | **M6 — More states + polish** | QLD cameras, clustering at low zoom, URL state (shareable views), dark basemap | 2 days | |
 | **M7 — Deploy + README** | CI (GitHub Actions: ruff + pytest + PostGIS service), deploy to a free/cheap VM, screenshots, architecture diagram | 1–2 days | |
 
@@ -31,6 +31,8 @@ OzWatch/
 │   │       ├── nsw_cameras.py
 │   │       ├── opensky.py     # flights: OAuth2 + credit-aware polling
 │   │       ├── aisstream.py   # ships: websocket stream, merges position + static AIS
+│   │       ├── nsw_rfs.py     # fires: incidents + fire-area polygons
+│   │       ├── usgs_quakes.py # earthquakes: USGS M2.5+ week feed, filtered to Australia
 │   │       └── samples/       # sample payloads for demo mode
 │   ├── sql/001_init.sql       # schema (idempotent)
 │   ├── tests/                 # pytest: per-connector, scheduler, API, PostGIS integration

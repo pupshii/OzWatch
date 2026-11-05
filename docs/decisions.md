@@ -128,3 +128,35 @@ A websocket dropping is normal (deploys, network blips). The runner
 reconnects with the same exponential backoff as the pollers, and resets it as
 soon as messages flow again, so one bad minute doesn't leave us waiting
 15 minutes. `/health` shows `connected` and `messages_per_min` for the stream.
+
+### 21. Shapes ride along with points
+Every layer stores a point (that's what the common schema, the spatial index
+and the bounding-box API are built on). A fire's burnt-area polygon is kept as
+an optional `area` property and drawn as a separate shaded map layer
+underneath. That supports shapes without changing the schema every other
+layer relies on. If more layers needed shapes, the next step would be a real
+`geometry` column (PostGIS handles any geometry type).
+
+### 22. Time zones are explicit
+The RFS feed mixes a UTC timestamp with a "Sydney local time" one. Local times
+are parsed with the `Australia/Sydney` time zone, which knows when daylight
+saving starts and ends, and everything is stored in UTC. The `tzdata` package
+ships the time zone rules with the app, because slim Docker images don't
+include them. Tests cover both AEST (July) and AEDT (January).
+
+### 23. Hazards come with a disclaimer
+Fire and earthquake popups say this isn't an official warning service and
+point to the official one (NSW RFS Fires Near Me). Data from these feeds can
+lag, and a portfolio map must never look like the authoritative source in an
+emergency.
+
+### 24. Links from feeds are allow-listed
+Popups only link to the source's own domain (rfs.nsw.gov.au,
+earthquake.usgs.gov) over https. Anything else in the feed is dropped. Same
+reasoning as the https-only camera images: a bad or tampered feed can't send
+users somewhere unexpected.
+
+### 25. Leaving a source out is a valid decision
+DEA Hotspots would add satellite fire detections, but its licence is listed
+as "not specified". Rather than assume, it's left out until Geoscience
+Australia confirms.

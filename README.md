@@ -3,7 +3,7 @@
 A live open-data map of Australia: traffic cameras, flights, ships and hazards
 on one map, with toggleable layers and a small analytics panel.
 
-> **Status: Milestone 3 of 7.** NSW traffic cameras, live flights and live ships work end to end. See
+> **Status: Milestone 4 of 7.** NSW traffic cameras, flights, ships, NSW fires and earthquakes work end to end. See
 > [docs/plan.md](docs/plan.md). The full README (screenshots, architecture
 > diagram, "what I'd do next") comes at the final milestone.
 
@@ -22,7 +22,7 @@ UI). Flights work without credentials too (anonymous OpenSky access, updated
 every 15 min). Add `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` from your
 OpenSky account's API client page for updates every 2 min. Ships need a free
 [aisstream.io](https://aisstream.io) key (`AISSTREAM_API_KEY`); without one, a few
-sample vessels are shown. For live data, register free at the
+sample vessels are shown. Fires (NSW RFS) and earthquakes (USGS) need no keys. For live data, register free at the
 [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au), create an
 application, subscribe it to the Live Traffic APIs, and put the key in `.env`.
 
@@ -66,5 +66,8 @@ Flight data from [The OpenSky Network](https://opensky-network.org), used under 
 non-commercial terms: Matthias Schäfer, Martin Strohmeier, Vincent Lenders, Ivan
 Martinovic and Matthias Wilhelm, "Bringing Up OpenSky: A Large-scale ADS-B Sensor
 Network for Research", IPSN 2014.
-Ship positions from [aisstream.io](https://aisstream.io). Basemap © OpenStreetMap contributors,
+Ship positions from [aisstream.io](https://aisstream.io).
+Fire incidents © State of New South Wales (NSW Rural Fire Service), CC BY.
+Earthquakes: U.S. Geological Survey (public domain).
+Basemap © OpenStreetMap contributors,
 OpenMapTiles, served by OpenFreeMap. Map rendering by MapLibre GL JS.

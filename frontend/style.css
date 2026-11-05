@@ -70,6 +70,9 @@ footer li { margin: 2px 0; }
 .popup .credit { font-size: 11px; }
 .popup .credit a { color: var(--accent); }
 
+.popup .alert { display: inline-block; color: #fff; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 8px; }
+.popup .warn { font-size: 11px; margin-top: 6px; }
+.popup a.ext { display: inline-block; font-size: 12px; color: var(--accent); margin: 2px 0 4px; }
 .popup .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 6px 0 8px; font-size: 13px; }
 .popup .kv dt { color: var(--muted); }
 .popup .kv dd { margin: 0; font-variant-numeric: tabular-nums; }

@@ -30,7 +30,9 @@ from app.config import Settings, get_settings
 from app.connectors.aisstream import AisStreamConnector
 from app.connectors.base import Connector, StreamConnector
 from app.connectors.nsw_cameras import NswCamerasConnector
+from app.connectors.nsw_rfs import NswRfsConnector
 from app.connectors.opensky import OpenSkyConnector
+from app.connectors.usgs_quakes import UsgsQuakesConnector
 from app.scheduler import Poller
 from app.store import Store, make_store
 from app.streaming import StreamRunner
@@ -49,6 +51,8 @@ def default_connectors(
     """(connector, poll-interval override) pairs. New sources get registered here."""
     return [
         (NswCamerasConnector(client, api_key=settings.tfnsw_api_key), settings.poll_cameras),
+        (NswRfsConnector(client), None),
+        (UsgsQuakesConnector(client), None),
         # Order = drawing order on the map: ships under flights.
         (AisStreamConnector(api_key=settings.aisstream_api_key), None),
         (

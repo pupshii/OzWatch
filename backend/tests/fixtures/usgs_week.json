@@ -1,0 +1,24 @@
+{
+  "_note": "Hand-made sample shaped like the USGS summary GeoJSON feed",
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "id": "us7000abcd",
+     "geometry": {"type": "Point", "coordinates": [146.35, -38.42, 10.3]},
+     "properties": {"mag": 4.24, "place": "15 km S of Sample, Australia", "time": 1762300000000, "updated": 1762300500000,
+                    "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000abcd", "felt": 120, "tsunami": 0,
+                    "magType": "mb", "type": "earthquake", "status": "reviewed"}},
+    {"type": "Feature", "id": "us7000efgh",
+     "geometry": {"type": "Point", "coordinates": [174.8, -41.3, 30.0]},
+     "properties": {"mag": 5.1, "place": "New Zealand", "time": 1762300000000, "type": "earthquake"}},
+    {"type": "Feature", "id": "us7000noma",
+     "geometry": {"type": "Point", "coordinates": [121.0, -30.0, 5.0]},
+     "properties": {"mag": null, "place": "Western Australia", "time": 1762300000000, "type": "earthquake"}},
+    {"type": "Feature", "id": "us7000blst",
+     "geometry": {"type": "Point", "coordinates": [121.4, -30.7, 0.0]},
+     "properties": {"mag": 2.6, "place": "Kalgoorlie mine", "time": 1762300000000, "type": "mining explosion"}},
+    {"type": "Feature", "id": "us7000nodp",
+     "geometry": {"type": "Point", "coordinates": [133.0, -25.0]},
+     "properties": {"mag": 3.0, "place": "Central Australia", "time": 1762301000000, "type": "earthquake",
+                    "url": "javascript:alert(1)"}}
+  ]
+}

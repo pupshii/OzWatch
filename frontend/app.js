@@ -26,10 +26,21 @@ const SHIP_COLORS = {
   Unknown: "#4c5a6b", // dark slate: still visible on the light basemap
 };
 
+// Fire incidents by NSW RFS alert level (most to least urgent).
+const FIRE_COLORS = {
+  "Emergency Warning": "#c92a2a",
+  "Watch and Act": "#f76707",
+  Advice: "#f2b705",
+  "Not Applicable": "#8d6e63",
+};
+const QUAKE_COLORS = { "Last 24 h": "#ae3ec9", "1–7 days": "#c9a3e0" };
+
 // Per-layer look and popup. New layers add an entry here.
 const LAYER_STYLE = {
   cameras: { kind: "circle", color: "#0b6bcb", radius: 5, popup: cameraPopup },
   // live: an open popup follows the feature and re-renders when it updates
+  fires: { kind: "fire", popup: firePopup, colors: FIRE_COLORS, legend: FIRE_COLORS, areas: true },
+  quakes: { kind: "quake", popup: quakePopup, legend: QUAKE_COLORS, decorate: decorateQuake },
   ships: { kind: "ship", popup: shipPopup, live: true, colors: SHIP_COLORS, legend: SHIP_COLORS },
   flights: { kind: "plane", color: "#d9480f", groundColor: "#8a919c", popup: flightPopup, live: true },
 };
@@ -62,34 +73,50 @@ map.on("load", async () => {
 
 function addLayer(info) {
   const style = LAYER_STYLE[info.key] || DEFAULT_STYLE;
-  const entry = { info, status: info.status, features: new Map(), visible: true, row: null };
+  const entry = { info, status: info.status, features: new Map(), visible: true, row: null, mapLayers: [] };
   state.layers.set(info.key, entry);
 
+  if (style.areas) {
+    // Shapes (e.g. fire extents) go underneath every point layer.
+    const areaKey = `${info.key}-areas`;
+    map.addSource(areaKey, { type: "geojson", data: emptyFC() });
+    map.addLayer(areaLayer(areaKey, style), state.firstPointLayer);
+    entry.mapLayers.push(`${areaKey}-fill`, `${areaKey}-line`);
+  }
   map.addSource(info.key, { type: "geojson", data: emptyFC(), attribution: info.attribution });
-  const makeLayer = { plane: planeLayer, ship: shipLayer, circle: circleLayer }[style.kind];
-  map.addLayer(makeLayer(info.key, style));
-  map.on("click", info.key, (e) => {
+  const makeLayer = { plane: planeLayer, ship: shipLayer, circle: circleLayer, fire: fireLayer, quake: quakeLayer };
+  map.addLayer(makeLayer[style.kind](info.key, style));
+  if (style.areas) map.addLayer(areaOutline(`${info.key}-areas`, style), info.key);
+  entry.mapLayers.push(info.key);
+  state.firstPointLayer ??= info.key;
+
+  const openPopup = (e) => {
     // Use our own copy of the feature: MapLibre's rendered copy can lag a delta behind.
-    const f = entry.features.get(e.features[0].id ?? e.features[0].properties.id) || e.features[0];
+    const id = e.features[0].properties.id;
+    const f = entry.features.get(id);
+    if (!f) return;
     const popup = new maplibregl.Popup({ maxWidth: "360px" })
       .setLngLat(f.geometry.coordinates)
       .setDOMContent(style.popup(f.properties, info))
       .addTo(map);
-    const open = { layer: info.key, id: f.properties.id, popup };
+    const open = { layer: info.key, id, popup };
     state.openPopup = open;
     popup.on("close", () => {
       if (state.openPopup === open) state.openPopup = null;
     });
-  });
-  map.on("mouseenter", info.key, () => (map.getCanvas().style.cursor = "pointer"));
-  map.on("mouseleave", info.key, () => (map.getCanvas().style.cursor = ""));
+  };
+  for (const id of entry.mapLayers.filter((l) => !l.endsWith("-line"))) {
+    map.on("click", id, openPopup);
+    map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
+  }
 
   // Panel row
   const row = document.getElementById("layer-row").content.firstElementChild.cloneNode(true);
   row.querySelector(".name").textContent = info.title;
   row.querySelector("input").addEventListener("change", (ev) => {
     entry.visible = ev.target.checked;
-    map.setLayoutProperty(info.key, "visibility", entry.visible ? "visible" : "none");
+    for (const id of entry.mapLayers) map.setLayoutProperty(id, "visibility", entry.visible ? "visible" : "none");
   });
   const swatch = row.querySelector(".swatch");
   if (style.legend) {
@@ -123,6 +150,66 @@ function circleLayer(key, style) {
       "circle-stroke-width": 1.5,
     },
   };
+}
+
+// Fires: circles coloured by alert level; more urgent = bigger and drawn on top.
+function fireLayer(key, style) {
+  const color = ["match", ["get", "alert_level"], ...Object.entries(style.colors).flat(), "#8d6e63"];
+  const urgency = ["match", ["get", "alert_level"], "Emergency Warning", 3, "Watch and Act", 2, "Advice", 1, 0];
+  return {
+    id: key,
+    type: "circle",
+    source: key,
+    layout: { "circle-sort-key": urgency },
+    paint: {
+      "circle-color": color,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, ["+", 3, urgency], 10, ["+", 6, ["*", 2, urgency]]],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.5,
+    },
+  };
+}
+
+function areaLayer(sourceKey, style) {
+  const color = ["match", ["get", "alert_level"], ...Object.entries(style.colors).flat(), "#8d6e63"];
+  return {
+    id: `${sourceKey}-fill`,
+    type: "fill",
+    source: sourceKey,
+    paint: { "fill-color": color, "fill-opacity": 0.25 },
+  };
+}
+
+function areaOutline(sourceKey, style) {
+  const color = ["match", ["get", "alert_level"], ...Object.entries(style.colors).flat(), "#8d6e63"];
+  return {
+    id: `${sourceKey}-line`,
+    type: "line",
+    source: sourceKey,
+    paint: { "line-color": color, "line-width": 1.2, "line-opacity": 0.8 },
+  };
+}
+
+// Earthquakes: size by magnitude, darker if in the last 24 h.
+function quakeLayer(key) {
+  return {
+    id: key,
+    type: "circle",
+    source: key,
+    layout: { "circle-sort-key": ["get", "magnitude"] },
+    paint: {
+      "circle-color": ["case", ["get", "recent"], QUAKE_COLORS["Last 24 h"], QUAKE_COLORS["1–7 days"]],
+      "circle-radius": ["interpolate", ["linear"], ["get", "magnitude"], 2.5, 5, 4, 9, 6, 18, 7, 26],
+      "circle-opacity": 0.75,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.5,
+    },
+  };
+}
+
+function decorateQuake(f) {
+  const recent = Date.now() - new Date(f.properties.timestamp).getTime() < 24 * 3600 * 1000;
+  return { ...f, properties: { ...f.properties, recent } };
 }
 
 // Aircraft: a plane icon rotated to its track; grey when on the ground.
@@ -246,7 +333,22 @@ function applyDelta(msg) {
 
 function pushToMap(key) {
   const entry = state.layers.get(key);
-  map.getSource(key).setData({ type: "FeatureCollection", features: [...entry.features.values()] });
+  const style = LAYER_STYLE[key] || DEFAULT_STYLE;
+  const feats = [...entry.features.values()];
+  map.getSource(key).setData({
+    type: "FeatureCollection",
+    features: style.decorate ? feats.map(style.decorate) : feats,
+  });
+  if (style.areas) {
+    const areas = feats
+      .filter((f) => f.properties.area)
+      .map((f) => ({
+        type: "Feature",
+        geometry: f.properties.area,
+        properties: { id: f.properties.id, alert_level: f.properties.alert_level },
+      }));
+    map.getSource(`${key}-areas`).setData({ type: "FeatureCollection", features: areas });
+  }
   renderMeta(entry);
   followOpenPopup(key);
 }
@@ -361,6 +463,54 @@ function cameraPopup(p, info) {
   return root;
 }
 
+function firePopup(p, info) {
+  const root = el("div", null, "popup");
+  root.append(el("h3", p.title || "Incident"));
+  const badge = el("span", p.alert_level, "alert");
+  badge.style.background = FIRE_COLORS[p.alert_level] || FIRE_COLORS["Not Applicable"];
+  const sub = el("p", null, "sub");
+  sub.append(badge);
+  if (p.status) sub.append(document.createTextNode(` ${p.status}`));
+  root.append(sub);
+
+  const rows = [];
+  if (p.incident_type) rows.push(["Type", p.incident_type]);
+  if (p.size_ha != null) rows.push(["Size", `${fmtNum(p.size_ha)} ha`]);
+  if (p.location) rows.push(["Location", p.location]);
+  if (p.council) rows.push(["Council", p.council]);
+  if (p.agency) rows.push(["Agency", p.agency]);
+  if (p.timestamp) rows.push(["Updated", `${ageText(p.timestamp)} (${fmtTime(p.timestamp)})`]);
+  root.append(kvList(rows));
+  if (p.link) root.append(extLink(p.link, "Details on the NSW RFS website"));
+  root.append(el("p", "Not an official warning service. For current warnings use NSW RFS Fires Near Me.", "sub warn"));
+  root.append(credit(info));
+  return root;
+}
+
+function quakePopup(p, info) {
+  const root = el("div", null, "popup");
+  root.append(el("h3", `M${p.magnitude} earthquake`));
+  if (p.place) root.append(el("p", p.place, "sub"));
+  const rows = [["Magnitude", `${p.magnitude}${p.mag_type ? ` (${p.mag_type})` : ""}`]];
+  if (p.depth_km != null) rows.push(["Depth", `${p.depth_km} km`]);
+  if (p.timestamp) rows.push(["Time", `${fmtDateTime(p.timestamp)} (${ageText(p.timestamp).replace(" old", " ago")})`]);
+  if (p.felt_reports) rows.push(["Felt reports", fmtNum(p.felt_reports)]);
+  if (p.review_status) rows.push(["Status", p.review_status === "reviewed" ? "Reviewed by a seismologist" : "Automatic"]);
+  if (p.tsunami_flag) rows.push(["Tsunami", "Flagged by USGS: check official warnings"]);
+  root.append(kvList(rows));
+  if (p.link) root.append(extLink(p.link, "USGS event page"));
+  root.append(credit(info));
+  return root;
+}
+
+function extLink(href, text) {
+  const a = el("a", `${text} ↗`, "ext");
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  return a;
+}
+
 function shipPopup(p, info) {
   const root = el("div", null, "popup");
   root.append(el("h3", p.name || p.title || "Vessel"));
@@ -463,7 +613,16 @@ function timeAgo(iso) {
 
 function ageText(iso) {
   const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
-  return s < 90 ? `${s} s old` : `${Math.round(s / 60)} min old`;
+  if (s < 90) return `${s} s old`;
+  if (s < 5400) return `${Math.round(s / 60)} min old`;
+  if (s < 172800) return `${Math.round(s / 3600)} h old`;
+  return `${Math.round(s / 86400)} days old`;
+}
+
+function fmtDateTime(d) {
+  return new Date(d).toLocaleString("en-AU", {
+    timeZone: "Australia/Sydney", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+  });
 }
 
 function fmtNum(n) {

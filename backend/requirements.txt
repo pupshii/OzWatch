@@ -5,3 +5,4 @@ websockets==17.4
 asyncpg==0.30.0
 pydantic==2.14.2
 pydantic-settings==2.6.1
+tzdata==2025.2  # time zones for parsing local times (slim images lack system tzdata)

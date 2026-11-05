@@ -1,0 +1,44 @@
+{
+  "_note": "Hand-made sample shaped like https://www.rfs.nsw.gov.au/feeds/majorIncidents.json",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "GeometryCollection", "geometries": [
+        {"type": "Point", "coordinates": [150.31, -33.71]},
+        {"type": "GeometryCollection", "geometries": [
+          {"type": "Polygon", "coordinates": [[[150.30, -33.70], [150.32, -33.70], [150.32, -33.72], [150.30, -33.72], [150.30, -33.70]]]},
+          {"type": "Polygon", "coordinates": [[[150.33, -33.73], [150.34, -33.73], [150.34, -33.74], [150.33, -33.73]]]}
+        ]}
+      ]},
+      "properties": {
+        "title": "Sample Ridge Fire",
+        "link": "http://www.rfs.nsw.gov.au/fire-information/fires-near-me",
+        "category": "Watch and Act",
+        "guid": "https://incidents.rfs.nsw.gov.au/api/v1/incidents/612345",
+        "guid_isPermaLink": "true",
+        "pubDate": "5/11/2026 1:20:00 AM",
+        "description": "ALERT LEVEL: Watch and Act <br />LOCATION: Sample Rd, Katoomba 2780 <br />COUNCIL AREA: Blue Mountains <br />STATUS: Out of control <br />TYPE: Bush Fire <br />FIRE: Yes <br />SIZE: 1,250 ha <br />RESPONSIBLE AGENCY: Rural Fire Service <br />UPDATED: 5 Nov 2026 12:20"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [149.10, -35.30]},
+      "properties": {
+        "title": "Sample Grass Fire",
+        "link": "https://evil.example.com/phish",
+        "category": "Advice",
+        "guid": "https://incidents.rfs.nsw.gov.au/api/v1/incidents/612346",
+        "pubDate": "not a date",
+        "description": "ALERT LEVEL: Advice <br />STATUS: Under control <br />TYPE: Grass Fire <br />FIRE: Yes <br />SIZE: 0 ha <br />UPDATED: 15 Jul 2026 09:05"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[151.00, -32.00], [151.02, -32.00], [151.02, -32.02], [151.00, -32.00]]]},
+      "properties": {"title": "Polygon only", "category": "Not Applicable", "guid": "612347", "description": "TYPE: Hazard Reduction <br />FIRE: No"}
+    },
+    {"type": "Feature", "geometry": null, "properties": {"title": "No geometry", "guid": "612348"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [0, 0]}, "properties": {"title": "Null island", "guid": "612349"}}
+  ]
+}

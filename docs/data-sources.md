@@ -14,7 +14,7 @@ by the documentation.
 | 3 | Ships | [aisstream.io](https://aisstream.io/documentation) | WebSocket, subscribe with bounding boxes | Yes, free (sign in with GitHub) | Fair use, no SLA; marked experimental | No formal terms published that I could find. Their docs say keep the key server-side. **Read terms at sign-up** | **GO** (backend-only websocket) |
 | 3b | Ships (alt) | [AISHub](https://www.aishub.net/join-us) | REST | Yes | — | Free only if you **contribute your own AIS receiver feed** | **NO-GO** unless you own a receiver |
 | 4 | Fires (NSW) | [NSW RFS Current Incidents](https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date/feeds) — `www.rfs.nsw.gov.au/feeds/majorIncidents.json` | GeoJSON file | No | None stated; poll ≥5 min | CC BY, © State of NSW (NSW RFS) | **GO** (quirks: nested GeometryCollections, two date formats) |
-| 4b | Hotspots | [DEA Hotspots](https://www.dea.ga.gov.au/products/dea-hotspots) WFS `hotspots.dea.ga.gov.au/geoserver/…` (feature type `Hotspots`) | OGC WFS (request JSON output) | No | Updates every 10 min | GA products are usually CC BY 4.0, but the catalogue says "not specified". **Confirm**. "Not for safety-of-life decisions" | **GO after licence check** |
+| 4b | Hotspots | [DEA Hotspots](https://www.dea.ga.gov.au/products/dea-hotspots) WFS `hotspots.dea.ga.gov.au/geoserver/…` (feature type `Hotspots`) | OGC WFS (request JSON output) | No | Updates every 10 min | GA products are usually CC BY 4.0, but the catalogue says "not specified". **Confirm**. "Not for safety-of-life decisions" | **Not used yet**: waiting on licence confirmation from GA (clientservices@ga.gov.au) |
 | 5 | Earthquakes | [USGS GeoJSON summary feeds](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php), filtered to an Australia bounding box | GeoJSON | No | Feeds update every minute; poll every 5 min | US public domain; credit USGS | **GO** |
 | 5b | Earthquakes (GA) | [Earthquakes@GA](https://earthquakes.ga.gov.au/) | — | — | — | CC BY 3.0 AU (catalogue) | **Not yet**: no documented public GeoJSON endpoint found. Use USGS; revisit |
 | 6 | Weather warnings | [BoM RSS](https://www.bom.gov.au/rss/) / [anonymous FTP](https://www.bom.gov.au/catalogue/anon-ftp.shtml) | RSS / FTP | No | — | RSS: personal, non-commercial, must link through to BoM, logo rules. FTP: no redistribution; publishing requires paid Registered User service | **NO-GO as a data layer**. Alternative: per-state "Warnings" links to bom.gov.au, or email BoM to ask |
@@ -40,3 +40,14 @@ receivers, so expect gaps away from major ports.
 **Privacy.** Aircraft ICAO24/callsign and vessel MMSI/name are published by the
 sources themselves and identify craft, not people. We store only 24 h of
 history and don't build per-craft "pattern of life" views.
+
+**USGS earthquakes.** We use the `2.5_week` summary feed rather than the
+query API, because USGS recommends the feeds for frequent polling. It's
+filtered to lat −45…−9, lon 110…156, so nearby sea areas (e.g. south of
+Indonesia) are included. Small Australian quakes below M2.5 aren't in this
+feed; Geoscience Australia would be the better source if it publishes a
+documented feed.
+
+**NSW RFS.** The feed also lists non-fire incidents (hazard reductions,
+vehicle accidents), with alert level "Not Applicable". They're kept and shown
+in a muted colour. Fire-area polygons are carried as an `area` property.
