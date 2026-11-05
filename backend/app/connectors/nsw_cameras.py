@@ -106,8 +106,10 @@ class NswCamerasConnector(Connector):
                 "view": _clean(props.get("view")),
                 "direction": _clean(props.get("direction")),
                 "region": _clean(props.get("region")),
-                "image_url": image_url,
+                # Sample cameras have no real image: don't send the browser to a dead link.
+                "image_url": None if self.demo_mode else image_url,
                 "state": "NSW",
+                "sample": self.demo_mode,
             },
         )
         return feat if feat.in_australia() else None

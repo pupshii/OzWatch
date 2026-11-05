@@ -40,8 +40,16 @@ def test_normalise_sample_payload():
     anzac = next(f for f in feats if f.id == "anzac_bridge")
     assert anzac.lat == pytest.approx(-33.869) and anzac.lon == pytest.approx(151.1856)
     assert anzac.properties["title"] == "Anzac Bridge"
-    assert anzac.properties["image_url"].startswith("https://")
     assert anzac.timestamp == FIXED_NOW
+    # demo mode: flagged as sample, and no (fake) image link is sent to the browser
+    assert anzac.properties["sample"] is True
+    assert anzac.properties["image_url"] is None
+
+
+def test_live_mode_keeps_image_url():
+    (f,) = make(api_key="k").normalise({"features": [cam()]})
+    assert f.properties["sample"] is False
+    assert f.properties["image_url"] == "https://webcams.example.nsw.gov.au/c1.jpeg"
 
 
 def test_geojson_lon_lat_order_is_respected():

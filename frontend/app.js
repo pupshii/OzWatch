@@ -184,7 +184,10 @@ function cameraPopup(p, info) {
 
   const load = () => {
     if (!p.image_url) {
-      msg.textContent = "No image available for this camera.";
+      msg.textContent = p.sample
+        ? "Sample camera, so there's no live image. Add your TfNSW API token to .env to see real cameras."
+        : "No image available for this camera.";
+      btn.hidden = true;
       return;
     }
     const img = new Image();
