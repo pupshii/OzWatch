@@ -121,7 +121,7 @@ class Poller:
         for fid in removed:
             self._last.pop(fid, None)
 
-        if changed or removed:
+        if (changed or removed) and info.delivery == "push":
             self.broadcaster.publish(
                 {
                     "type": "delta",

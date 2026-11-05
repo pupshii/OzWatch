@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # Override poll intervals (seconds) without code changes, e.g. POLL_CAMERAS=900
     poll_cameras: int | None = None
     poll_flights: int | None = None
+    poll_transit: int | None = None
 
     history_hours: int = 24
     log_level: str = "INFO"

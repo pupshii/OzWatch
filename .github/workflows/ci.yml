@@ -63,7 +63,7 @@ jobs:
           exit 1
       - name: Smoke-test the endpoints
         run: |
-          curl -fsS http://localhost:8000/api/layers | python3 -c "import sys, json; keys = [l['key'] for l in json.load(sys.stdin)]; print(keys); assert keys == ['cameras', 'fires', 'quakes', 'ships', 'flights']"
+          curl -fsS http://localhost:8000/api/layers | python3 -c "import sys, json; keys = [l['key'] for l in json.load(sys.stdin)]; print(keys); assert keys == ['cameras', 'fires', 'quakes', 'transit', 'ships', 'flights']"
           curl -fsS http://localhost:8000/api/layers/cameras/features | python3 -c "import sys, json; n = len(json.load(sys.stdin)['features']); print(n, 'cameras'); assert n > 0"
           curl -fsS http://localhost:8000/api/analytics | python3 -c "import sys, json; d = json.load(sys.stdin); print('analytics available:', d['available']); assert d['available']"
           curl -fsS http://localhost:8000/ | grep -q OzWatch

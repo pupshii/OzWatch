@@ -33,6 +33,7 @@ from app.connectors.base import Connector, StreamConnector
 from app.connectors.nsw_cameras import NswCamerasConnector
 from app.connectors.nsw_rfs import NswRfsConnector
 from app.connectors.opensky import OpenSkyConnector
+from app.connectors.tfnsw_transit import TfnswTransitConnector
 from app.connectors.usgs_quakes import UsgsQuakesConnector
 from app.scheduler import Poller
 from app.store import Store, make_store
@@ -54,6 +55,7 @@ def default_connectors(
         (NswCamerasConnector(client, api_key=settings.tfnsw_api_key), settings.poll_cameras),
         (NswRfsConnector(client), None),
         (UsgsQuakesConnector(client), None),
+        (TfnswTransitConnector(client, api_key=settings.tfnsw_api_key), settings.poll_transit),
         # Order = drawing order on the map: ships under flights.
         (AisStreamConnector(api_key=settings.aisstream_api_key), None),
         (

@@ -247,3 +247,27 @@ updates arrive every few seconds, so a forgotten background tab would
 otherwise download data all day: that costs visitors on mobile data, and it
 costs the server outbound traffic, which cloud providers bill by the gigabyte.
 A one-minute grace period means quick tab switches don't cause reconnect churn.
+
+### 40. Push sparse layers, pull dense ones by viewport
+Ships, planes and fires are a few hundred to a few thousand points, so every
+change is pushed to every browser. Sydney's buses are thousands of vehicles
+all moving every 30 s, and pushing them would mean ~1 MB per visitor every
+poll. So the transit layer is "viewport-delivered": the browser asks for
+vehicles inside the visible map area (using the PostGIS bounding-box query),
+only when zoomed in to city level, and refreshes every 20 s. That's how real
+transit apps behave. It keeps visitors' data use and the server's outbound
+traffic small. The server still stores everything, so analytics see the whole
+network.
+
+### 41. Seven feeds, one layer, failures isolated
+Trains, metro, buses, ferries and two light-rail lines come from seven
+separate GTFS-realtime feeds. They're fetched one after another with a short
+pause (staying under TfNSW's 5 requests/second limit). If one feed fails,
+the others still update and `/health` lists the failing feed, instead of the
+whole layer going dark.
+
+### 42. Undo float32 noise at the edge
+GTFS-realtime stores coordinates as 32-bit floats, so −33.87 arrives as
+−33.8699989. Rounding to decimal places doesn't remove that noise; keeping 7
+*significant digits* (what a 32-bit float can hold) recovers the value that
+was sent, with ~1 m precision. Found by a unit test, not in production.

@@ -39,6 +39,11 @@ class LayerInfo:
     keep_history: bool  # moving things (planes) yes; fixed things (cameras) no
     stale_after_seconds: int  # drop features not seen for this long
     history_min_interval_s: int = 0  # at most one history row per feature per N seconds
+    # "push": every change is streamed to browsers (fine for hundreds of features).
+    # "viewport": browsers fetch only what's on screen, when zoomed in past min_zoom
+    # (for dense layers like thousands of buses).
+    delivery: str = "push"
+    min_zoom: float = 0
 
 
 class Connector(ABC):

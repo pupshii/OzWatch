@@ -15,21 +15,25 @@ const VIEWS = {
   ships_by_type: { kind: "bars", label: "category", value: "ships", unit: "ships", extra: ["moving", "moving"] },
   busiest_ports: { kind: "bars", label: "port", value: "ships", unit: "ships", extra: ["stationary", "at anchor or berthed"] },
   fires_by_level: { kind: "bars", label: "alert_level", value: "incidents", unit: "incidents", chips: "fire" },
+  transit_by_mode: { kind: "bars", label: "mode", value: "vehicles", unit: "vehicles", chips: "transit" },
+  transit_hourly: { kind: "columns", value: "vehicles", unit: "vehicles", note: "Last column = the current hour so far. Expect morning and evening peaks." },
   cameras_by_region: { kind: "bars", label: "label", value: "cameras", unit: "cameras" },
   source_health: { kind: "health" },
 };
 const ORDER = [
   "flights_sydney_hourly", "flight_altitudes", "ships_by_type", "busiest_ports",
-  "fires_by_level", "fires_hourly", "cameras_by_region", "source_health",
+  "transit_by_mode", "transit_hourly", "fires_by_level", "fires_hourly", "cameras_by_region", "source_health",
 ];
-const LAYER_NAMES = { cameras: "Traffic cameras", fires: "NSW RFS", quakes: "Earthquakes", ships: "Ships", flights: "Flights" };
+const LAYER_NAMES = {
+  cameras: "Traffic cameras", fires: "NSW RFS", quakes: "Earthquakes", transit: "Public transport", ships: "Ships", flights: "Flights",
+};
 
 let timer = null;
 let tip = null;
 let chipColors = {};
 
-export function initAnalytics({ fireColors }) {
-  chipColors = { fire: fireColors };
+export function initAnalytics({ fireColors, transitColors }) {
+  chipColors = { fire: fireColors, transit: transitColors };
   const drawer = document.getElementById("analytics");
   const button = document.getElementById("analytics-toggle");
   tip = document.getElementById("viz-tip");

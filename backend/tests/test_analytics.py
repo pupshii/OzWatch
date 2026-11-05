@@ -161,3 +161,20 @@ async def test_results_are_cached(seeded):
     assert await a.get() is first  # within 60 s: cached
     t[0] = 61
     assert section(await a.get(), "ships_by_type") == []  # refreshed
+
+
+@pg
+async def test_transit_sections(seeded):
+    now = datetime.now(UTC)
+    vehicles = [f("transit", f"b{i}", -33.87, 151.2, now, mode="bus") for i in range(3)]
+    vehicles += [f("transit", "t1", -33.88, 151.2, now, mode="train"), f("transit", "x", -33.8, 151.3, now)]
+    await seeded.upsert("transit", vehicles, seen_at=now)
+    await seeded.record_run("transit", now - timedelta(hours=2), now, True, 900, None)
+    await seeded.record_run("transit", now - timedelta(hours=2, minutes=-1), now, True, 950, None)
+
+    result = await Analytics(seeded).get()
+    assert {r["mode"]: r["vehicles"] for r in section(result, "transit_by_mode")} == {
+        "Buses": 3, "Trains": 1, "Other": 1,
+    }  # fmt: skip
+    hourly = section(result, "transit_hourly")
+    assert len(hourly) == 24 and [r["vehicles"] for r in hourly if r["vehicles"]] == [950]

@@ -36,6 +36,9 @@ const FIRE_COLORS = {
   "Not Applicable": "#8d6e63",
 };
 const QUAKE_COLORS = { "Last 24 h": "#ae3ec9", "1–7 days": "#c9a3e0" };
+// Sydney's familiar mode colours, so commuters recognise them at a glance.
+const TRANSIT_COLORS = { Trains: "#f6891f", Metro: "#168388", Buses: "#00a3e0", Ferries: "#5ab031", "Light rail": "#ee343f" };
+const TRANSIT_MODE = { train: "Trains", metro: "Metro", bus: "Buses", ferry: "Ferries", lightrail: "Light rail" };
 
 // Per-layer look and popup. New layers add an entry here.
 const LAYER_STYLE = {
@@ -43,6 +46,7 @@ const LAYER_STYLE = {
   // live: an open popup follows the feature and re-renders when it updates
   fires: { kind: "fire", popup: firePopup, colors: FIRE_COLORS, legend: FIRE_COLORS, areas: true },
   quakes: { kind: "quake", popup: quakePopup, legend: QUAKE_COLORS, decorate: decorateQuake },
+  transit: { kind: "transit", popup: transitPopup, live: true, legend: TRANSIT_COLORS },
   ships: { kind: "ship", popup: shipPopup, live: true, colors: SHIP_COLORS, legend: SHIP_COLORS },
   flights: { kind: "plane", color: "#d9480f", groundColor: "#8a919c", popup: flightPopup, live: true },
 };
@@ -64,7 +68,7 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 window.ozwatch = { map, state }; // handy in the browser dev console and for end-to-end tests
 
-initAnalytics({ fireColors: FIRE_COLORS });
+initAnalytics({ fireColors: FIRE_COLORS, transitColors: TRANSIT_COLORS });
 
 map.on("load", async () => {
   const layers = await getJSON("/api/layers");
@@ -72,6 +76,14 @@ map.on("load", async () => {
   await refreshAll();
   connectStream();
   setInterval(renderAllMeta, 30_000); // keep "updated 3 min ago" fresh
+  // Viewport layers (dense, e.g. buses): refetch what's on screen after panning, and every 20 s.
+  let moveTimer;
+  map.on("moveend", () => {
+    clearTimeout(moveTimer);
+    moveTimer = setTimeout(loadViewportLayers, 250);
+  });
+  setInterval(loadViewportLayers, VIEWPORT_REFRESH_MS);
+  loadViewportLayers();
 });
 
 // ---------- layers ----------
@@ -92,7 +104,9 @@ function addLayer(info) {
     entry.mapLayers.push(`${areaKey}-fill`, `${areaKey}-line`);
   }
   map.addSource(info.key, { type: "geojson", data: emptyFC(), attribution: info.attribution });
-  const makeLayer = { plane: planeLayer, ship: shipLayer, circle: circleLayer, fire: fireLayer, quake: quakeLayer };
+  const makeLayer = {
+    plane: planeLayer, ship: shipLayer, circle: circleLayer, fire: fireLayer, quake: quakeLayer, transit: transitLayer,
+  };
   map.addLayer(makeLayer[style.kind](info.key, style));
   if (style.areas) map.addLayer(areaOutline(`${info.key}-areas`, style), info.key);
   entry.mapLayers.push(info.key);
@@ -125,6 +139,7 @@ function addLayer(info) {
   row.querySelector("input").addEventListener("change", (ev) => {
     entry.visible = ev.target.checked;
     applyVisibility(entry);
+    if (entry.visible && entry.info.delivery === "viewport") loadViewport(entry).catch(console.error);
     const on = [...state.layers.values()].filter((e) => e.visible).map((e) => e.info.key);
     setParam("layers", on.length === state.layers.size ? null : on.join(","));
   });
@@ -138,7 +153,9 @@ function addLayer(info) {
   row.querySelector("input").checked = entry.visible;
   applyVisibility(entry);
 
-  // Attribution (required by the source licences)
+  // Attribution (required by the source licences), once per source
+  if (state.attributed?.has(info.attribution)) return renderMeta(entry);
+  (state.attributed ??= new Set()).add(info.attribution);
   const li = document.createElement("li");
   const a = el("a", info.attribution);
   a.href = info.attribution_url;
@@ -199,6 +216,24 @@ function areaOutline(sourceKey, style) {
     type: "line",
     source: sourceKey,
     paint: { "line-color": color, "line-width": 1.2, "line-opacity": 0.8 },
+  };
+}
+
+// Public transport: circles in Sydney's mode colours; trains and metro a little bigger.
+function transitLayer(key) {
+  const mode = ["get", "mode"];
+  return {
+    id: key,
+    type: "circle",
+    source: key,
+    minzoom: 9,
+    layout: { "circle-sort-key": ["match", mode, "bus", 0, 1] },
+    paint: {
+      "circle-color": ["match", mode, ...Object.entries(TRANSIT_MODE).flatMap(([m, n]) => [m, TRANSIT_COLORS[n]]), "#888"],
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, ["match", mode, "bus", 3, 4.5], 15, ["match", mode, "bus", 6, 8]],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.2,
+    },
   };
 }
 
@@ -318,6 +353,35 @@ function planeIcon(color) {
   return ctx.getImageData(0, 0, size, size);
 }
 
+// ---------- viewport layers: fetch only what's on screen ----------
+
+const VIEWPORT_REFRESH_MS = 20_000;
+
+function loadViewportLayers() {
+  for (const entry of state.layers.values()) {
+    if (entry.info.delivery === "viewport") loadViewport(entry).catch(console.error);
+  }
+}
+
+async function loadViewport(entry) {
+  if (!entry.visible || document.hidden) return;
+  const key = entry.info.key;
+  if (map.getZoom() < entry.info.min_zoom) {
+    entry.zoomedOut = true;
+    if (entry.features.size) {
+      entry.features = new Map();
+      pushToMap(key);
+    } else renderMeta(entry);
+    return;
+  }
+  entry.zoomedOut = false;
+  const b = map.getBounds();
+  const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((x) => x.toFixed(4)).join(",");
+  const fc = await getJSON(`/api/layers/${encodeURIComponent(key)}/features?bbox=${bbox}`);
+  entry.features = new Map(fc.features.map((f) => [f.id, f]));
+  pushToMap(key);
+}
+
 function applyVisibility(entry) {
   for (const id of entry.mapLayers) map.setLayoutProperty(id, "visibility", entry.visible ? "visible" : "none");
 }
@@ -331,6 +395,7 @@ async function refreshAll() {
   }
   await Promise.all(
     [...state.layers.keys()].map(async (key) => {
+      if (state.layers.get(key).info.delivery === "viewport") return loadViewport(state.layers.get(key));
       const fc = await getJSON(`/api/layers/${encodeURIComponent(key)}/features`);
       const entry = state.layers.get(key);
       entry.features = new Map(fc.features.map((f) => [f.id, f]));
@@ -440,7 +505,10 @@ function renderAllMeta() {
 function renderMeta(entry) {
   const { row, status } = entry;
   if (!row) return;
-  row.querySelector(".count").textContent = entry.features.size.toLocaleString();
+  row.querySelector(".count").textContent =
+    entry.info.delivery === "viewport"
+      ? entry.zoomedOut ? "zoom in" : `${entry.features.size.toLocaleString()} in view`
+      : entry.features.size.toLocaleString();
   row.querySelector(".dot").className = `dot ${status.state}`;
   row.querySelector(".demo").hidden = !status.demo;
   const updated = status.last_success ? `updated ${timeAgo(status.last_success)}` : "no data yet";
@@ -549,6 +617,24 @@ function extLink(href, text) {
   a.target = "_blank";
   a.rel = "noopener noreferrer";
   return a;
+}
+
+function transitPopup(p, info) {
+  const root = el("div", null, "popup");
+  const modeName = TRANSIT_MODE[p.mode] || "Vehicle";
+  root.append(el("h3", p.route ? `${p.route}` : p.operator || modeName));
+  root.append(el("p", [p.operator, p.label].filter(Boolean).join(" · ") || modeName, "sub"));
+  const rows = [];
+  if (p.status) rows.push(["Status", p.status]);
+  if (p.speed_kmh != null) rows.push(["Speed", `${p.speed_kmh} km/h`]);
+  if (p.bearing != null) rows.push(["Heading", `${p.bearing}°`]);
+  if (p.occupancy) rows.push(["Crowding", p.occupancy]);
+  if (p.route_id && p.route_id !== p.route) rows.push(["Route ID", p.route_id]);
+  if (p.timestamp) rows.push(["Position", `${ageText(p.timestamp)} (${fmtTime(p.timestamp)})`]);
+  root.append(kvList(rows));
+  if (p.sample) root.append(el("p", "Sample vehicle. Add your TfNSW key to .env for live transport.", "sub"));
+  root.append(credit(info));
+  return root;
 }
 
 function shipPopup(p, info) {

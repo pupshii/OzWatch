@@ -66,6 +66,16 @@ SECTIONS: dict[str, tuple[str, str, str]] = {
         "NSW RFS incidents over 24 h",
         "Highest number of listed incidents in each hour.",
     ),
+    "transit_by_mode": (
+        "transit_by_mode.sql",
+        "Sydney public transport right now",
+        "Vehicles currently reporting a position, by mode (TfNSW).",
+    ),
+    "transit_hourly": (
+        "transit_hourly.sql",
+        "Public transport vehicles in service (24 h)",
+        "Highest number of vehicles reporting in each hour.",
+    ),
     "cameras_by_region": (
         "cameras_by_region.sql",
         "Traffic cameras by region",

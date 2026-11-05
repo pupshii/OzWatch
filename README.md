@@ -20,12 +20,13 @@ access, rate limits and licence before any code was written
 
 ## Features
 
-- **Five live layers**, each toggleable, with a "last updated" time, a health dot and source attribution
+- **Six live layers**, each toggleable, with a "last updated" time, a health dot and source attribution
   - **Traffic cameras (NSW):** about 250 cameras; click for the latest image (Transport for NSW)
   - **Flights:** ADS-B aircraft over Australia, icons rotated to their heading (OpenSky Network)
   - **Ships:** live AIS positions over a websocket, coloured by vessel type (aisstream.io)
   - **Fires & incidents:** NSW RFS incidents by alert level, with fire-area shapes
   - **Earthquakes:** USGS M2.5+ events in Australia and its waters, sized by magnitude
+  - **Public transport (Sydney):** live trains, metro, buses, ferries and light rail in their familiar mode colours, with crowding where reported (Transport for NSW). Loaded for the visible area when zoomed in.
 - **Live updates:** the server pushes only what changed to the browser (Server-Sent Events); popups follow moving aircraft and ships
 - **Analytics panel:** eight charts from standalone SQL files (aircraft near Sydney per hour, altitude bands, vessels by type, busiest ports, fire incidents over time, source reliability…), each with tooltips, a table view and CSV export
 - **Shareable views:** the URL keeps the map position, visible layers and panel state
@@ -37,7 +38,7 @@ access, rate limits and licence before any code was written
 ```mermaid
 flowchart LR
     subgraph Sources["Open data sources"]
-        TfNSW["TfNSW<br/>cameras API"]
+        TfNSW["TfNSW<br/>cameras + transit (GTFS-RT)"]
         OpenSky["OpenSky<br/>REST + OAuth2"]
         RFS["NSW RFS<br/>GeoJSON feed"]
         USGS["USGS<br/>GeoJSON feed"]
@@ -68,7 +69,7 @@ its own format into one common record: `id, layer, lat, lon, timestamp,
 properties`. Everything after that (storage, API, live stream, map) is shared,
 so adding a source is one file plus tests. Polled sources run on intervals
 worked out from their rate limits. The AIS websocket is buffered and written
-in 5-second batches. The 39 design decisions are explained in plain language in
+in 5-second batches. The 42 design decisions are explained in plain language in
 [docs/decisions.md](docs/decisions.md).
 
 **Stack:** Python 3.12 · FastAPI · asyncpg · PostgreSQL 16 + PostGIS 3.4 ·
@@ -88,7 +89,7 @@ Open <http://localhost:8000>. Health: <http://localhost:8000/health>. API docs: 
 
 | Variable | Get it from | Without it |
 |---|---|---|
-| `TFNSW_API_KEY` | [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au) (API token) | 8 sample cameras |
+| `TFNSW_API_KEY` | [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au) (API token) | 8 sample cameras, 6 sample transit vehicles |
 | `OPENSKY_CLIENT_ID`, `OPENSKY_CLIENT_SECRET` | [OpenSky](https://opensky-network.org) → Account → API client | Anonymous: updates every 15 min instead of 2 |
 | `AISSTREAM_API_KEY` | [aisstream.io](https://aisstream.io) (sign in with GitHub) | 6 sample vessels |
 
@@ -145,6 +146,7 @@ address) or [docs/deploy.md](docs/deploy.md) (any VPS).
 | Layer | Source | Licence |
 |---|---|---|
 | Traffic cameras | [Transport for NSW Open Data](https://opendata.transport.nsw.gov.au/dataset/live-traffic-cameras) | CC BY: © Transport for NSW |
+| Public transport | [Transport for NSW Open Data](https://opendata.transport.nsw.gov.au) (GTFS-realtime vehicle positions) | CC BY: © Transport for NSW |
 | Flights | [The OpenSky Network](https://opensky-network.org) | Non-commercial use. Schäfer, Strohmeier, Lenders, Martinovic & Wilhelm, "Bringing Up OpenSky: A Large-scale ADS-B Sensor Network for Research", IPSN 2014 |
 | Ships | [aisstream.io](https://aisstream.io) | Free API, attribution |
 | Fires & incidents | [NSW Rural Fire Service](https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date/feeds) | CC BY: © State of New South Wales (NSW RFS) |
@@ -196,6 +198,6 @@ aggregate charts. There are no per-vehicle tracks or "pattern of life" views.
 ## Project docs
 
 - [docs/data-sources.md](docs/data-sources.md): every source checked for access, limits, licence, go/no-go
-- [docs/decisions.md](docs/decisions.md): 39 design decisions in plain language
+- [docs/decisions.md](docs/decisions.md): 42 design decisions in plain language
 - [docs/plan.md](docs/plan.md): milestones and repo layout
 - [docs/deploy-gcp.md](docs/deploy-gcp.md) / [docs/deploy.md](docs/deploy.md): deployment guides
