@@ -3,6 +3,19 @@
 # Safe to run more than once. Usage:  bash deploy/setup-server.sh
 set -euo pipefail
 
+# 0. Basic tools. Google Cloud's "minimal" Ubuntu images ship without git, nano and cron.
+missing=""
+for pkg in git nano cron curl ca-certificates; do
+  dpkg -s "$pkg" >/dev/null 2>&1 || missing="$missing $pkg"
+done
+if [ -n "$missing" ]; then
+  echo "Installing:$missing"
+  sudo apt-get update -qq
+  # shellcheck disable=SC2086
+  sudo apt-get install -y -qq $missing
+fi
+sudo systemctl enable --now cron >/dev/null 2>&1 || true
+
 # 1. Swap: the free e2-micro has only 1 GB RAM. 2 GB of swap stops Docker
 #    builds and Postgres from being killed when memory runs short.
 if ! sudo swapon --show | grep -q '/swapfile'; then

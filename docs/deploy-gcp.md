@@ -64,9 +64,11 @@ Your site will be `https://ozwatch-yourname.duckdns.org`.
 ## 4. Install OzWatch on the VM
 
 Back in **VM instances**, click **SSH** next to `ozwatch`. A terminal opens
-in your browser. Run:
+in your browser. Google's Ubuntu images are "minimal" and don't include `git`,
+so install the basics first, then run the rest:
 
 ```bash
+sudo apt-get update && sudo apt-get install -y git nano cron curl ca-certificates
 git clone https://github.com/pupshii/OzWatch.git
 cd OzWatch
 bash deploy/setup-server.sh      # adds swap memory + installs Docker (~2 min)
