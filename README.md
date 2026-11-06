@@ -26,7 +26,7 @@ access, rate limits and licence before any code was written
   - **Ships:** live AIS positions over a websocket, coloured by vessel type (aisstream.io)
   - **Fires & incidents:** NSW RFS incidents by alert level, with fire-area shapes
   - **Earthquakes:** USGS M2.5+ events in Australia and its waters, sized by magnitude
-  - **Public transport (Sydney):** live trains, metro, buses, ferries and light rail in their familiar mode colours, with crowding where reported (Transport for NSW). Loaded for the visible area when zoomed in.
+  - **Public transport (Sydney):** live trains, metro, buses, ferries and light rail in their familiar mode colours, with crowding where reported (Transport for NSW). Loaded for the visible area when zoomed in, over the train, metro and light rail lines in their official colours (built weekly from TfNSW timetables).
 - **Live updates:** the server pushes only what changed to the browser (Server-Sent Events); popups follow moving aircraft and ships
 - **Analytics panel:** eight charts from standalone SQL files (aircraft near Sydney per hour, altitude bands, vessels by type, busiest ports, fire incidents over time, source reliability…), each with tooltips, a table view and CSV export
 - **Shareable views:** the URL keeps the map position, visible layers and panel state
@@ -69,7 +69,7 @@ its own format into one common record: `id, layer, lat, lon, timestamp,
 properties`. Everything after that (storage, API, live stream, map) is shared,
 so adding a source is one file plus tests. Polled sources run on intervals
 worked out from their rate limits. The AIS websocket is buffered and written
-in 5-second batches. The 44 design decisions are explained in plain language in
+in 5-second batches. The 46 design decisions are explained in plain language in
 [docs/decisions.md](docs/decisions.md).
 
 **Stack:** Python 3.12 · FastAPI · asyncpg · PostgreSQL 16 + PostGIS 3.4 ·
@@ -131,6 +131,7 @@ builds the Docker image and smoke-tests the running stack.
 | `GET /api/layers` | Layers, attribution, live status |
 | `GET /api/layers/{key}/features?bbox=w,s,e,n` | Current GeoJSON for a layer (optional bounding box, PostGIS-indexed) |
 | `GET /api/stream` | Server-Sent Events: `delta` (upserts/removals) and `status` messages |
+| `GET /api/lines` | Train, metro and light rail line shapes (GeoJSON, rebuilt weekly from GTFS timetables) |
 | `GET /api/analytics` | Analytics panel data (needs PostgreSQL) |
 | `GET /health` | Per-source health: `ok` / `degraded` / `error`, credits left, stream rate |
 
@@ -198,6 +199,6 @@ aggregate charts. There are no per-vehicle tracks or "pattern of life" views.
 ## Project docs
 
 - [docs/data-sources.md](docs/data-sources.md): every source checked for access, limits, licence, go/no-go
-- [docs/decisions.md](docs/decisions.md): 44 design decisions in plain language
+- [docs/decisions.md](docs/decisions.md): 46 design decisions in plain language
 - [docs/plan.md](docs/plan.md): milestones and repo layout
 - [docs/deploy-gcp.md](docs/deploy-gcp.md) / [docs/deploy.md](docs/deploy.md): deployment guides

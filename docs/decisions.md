@@ -288,3 +288,22 @@ its heading pointer, a fire dot inside its fire area). Each layer's click
 handler would open its own popup, stacking two on top of each other. Found by
 a browser test; fixed by letting only the first handler for a given click
 open a popup.
+
+### 45. Rail lines: a small weekly ETL job in SQL
+The train, metro and light rail lines come from TfNSW's GTFS timetables, not
+from the basemap. The basemap's railways include freight lines and don't know
+T1 from T8, while the timetable has every route's exact shape and its official
+colour. Weekly: download the zip, keep rail-type routes (dropping the
+rail-replacement buses listed in the train feed), stream the shape points into
+PostGIS with `COPY` (memory-safe on a 1 GB server), then in SQL build each
+shape as a line, simplify it, and `ST_Union` every variant of a route so
+shared track is stored once, then `ST_LineMerge` the pieces back into long
+lines. A test checks that two variants sharing track merge into one line of
+the right length.
+
+### 46. Unverified endpoints are probed, not guessed
+Only the Sydney Trains timetable path could be confirmed from public sources.
+For metro and light rail the server tries a short list of candidate paths
+(named like the confirmed live feeds), uses the first that returns a real
+zip, and reports on `/health` which path worked, or every path's error.
+One wrong guess can't break the other lines.

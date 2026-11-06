@@ -78,3 +78,9 @@ def test_default_connectors_register_all_layers():
 def test_analytics_endpoint_without_postgres(client):
     body = client.get("/api/analytics").json()
     assert body["available"] is False
+
+
+def test_lines_endpoint_without_postgres(client):
+    r = client.get("/api/lines")
+    assert r.json() == {"type": "FeatureCollection", "features": []}
+    assert "max-age" in r.headers["cache-control"]

@@ -112,21 +112,22 @@ function addLayer(info) {
     transit: transitLayer, camera: cameraLayer,
   };
   for (const layer of [makeLayer[style.kind](info.key, style)].flat()) {
-    map.addLayer(layer);
+    map.addLayer(layer, layer.metadata?.before); // e.g. rail lines go under every icon layer
     entry.mapLayers.push(layer.id);
   }
   if (style.areas) map.addLayer(areaOutline(`${info.key}-areas`, style), entry.mapLayers.find((id) => !id.includes("-areas")));
   state.firstPointLayer ??= info.key;
+  if (style.kind === "transit") onLineClick(entry);
 
   const openPopup = (e) => {
     // A click can hit several of our layers at once (a vehicle badge and its heading
     // pointer, a fire dot inside its fire area): open only one popup per click.
     if (state.lastPopupClick === e.originalEvent) return;
-    state.lastPopupClick = e.originalEvent;
     // Use our own copy of the feature: MapLibre's rendered copy can lag a delta behind.
     const id = e.features[0].properties.id;
     const f = entry.features.get(id);
     if (!f) return;
+    state.lastPopupClick = e.originalEvent;
     const popup = new maplibregl.Popup({ maxWidth: "360px" })
       .setLngLat(f.geometry.coordinates)
       .setDOMContent(style.popup(f.properties, info))
@@ -137,7 +138,7 @@ function addLayer(info) {
       if (state.openPopup === open) state.openPopup = null;
     });
   };
-  for (const id of entry.mapLayers.filter((l) => !l.endsWith("-line"))) {
+  for (const id of entry.mapLayers.filter((l) => !l.endsWith("-line") && !l.includes("-lines"))) {
     map.on("click", id, openPopup);
     map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
@@ -149,7 +150,10 @@ function addLayer(info) {
   row.querySelector("input").addEventListener("change", (ev) => {
     entry.visible = ev.target.checked;
     applyVisibility(entry);
-    if (entry.visible && entry.info.delivery === "viewport") loadViewport(entry).catch(console.error);
+    if (entry.visible && entry.info.delivery === "viewport") {
+      loadViewport(entry).catch(console.error);
+      loadLines();
+    }
     const on = [...state.layers.values()].filter((e) => e.visible).map((e) => e.info.key);
     setParam("layers", on.length === state.layers.size ? null : on.join(","));
   });
@@ -263,7 +267,29 @@ function transitLayer(key) {
   const known = ["match", mode, Object.keys(TRANSIT_MODE), mode, "bus"];
   const size = ["interpolate", ["linear"], ["zoom"], 11, ["match", mode, "bus", 0.62, 0.72], 14, ["match", mode, "bus", 0.95, 1.05], 17, 1.3];
   const common = { "icon-size": size, "icon-allow-overlap": true, "icon-ignore-placement": true, "symbol-sort-key": ["match", mode, "bus", 0, 1] };
+  map.addSource(`${key}-lines`, { type: "geojson", data: emptyFC(), attribution: "Transport for NSW" });
+  const width = ["interpolate", ["linear"], ["zoom"], 8, 1.2, 11, 2.4, 14, 4.5];
+  const before = { before: state.firstPointLayer }; // under cameras, fires, ships, planes...
   return [
+    {
+      id: `${key}-lines-casing`,
+      type: "line",
+      source: `${key}-lines`,
+      minzoom: 8,
+      metadata: before,
+      layout: { "line-join": "round", "line-cap": "round" },
+      // zoom curves can't be nested inside maths in MapLibre, so the outline gets its own curve
+      paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.2, 11, 4.4, 14, 6.5], "line-opacity": 0.85 },
+    },
+    {
+      id: `${key}-lines`,
+      type: "line",
+      source: `${key}-lines`,
+      minzoom: 8,
+      metadata: before,
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: { "line-color": ["get", "color"], "line-width": width, "line-opacity": 0.9 },
+    },
     {
       id: `${key}-heading`,
       type: "symbol",
@@ -398,11 +424,43 @@ function planeIcon(color) {
   return ctx.getImageData(0, 0, size, size);
 }
 
+// ---------- rail lines (train, metro, light rail) ----------
+
+// The line shapes (~hundreds of KB) are fetched once, the first time the public
+// transport layer is visible at suburb-level zoom or closer.
+async function loadLines() {
+  const entry = state.layers.get("transit");
+  if (state.linesLoaded || !entry?.visible || map.getZoom() < 8) return;
+  state.linesLoaded = true;
+  try {
+    map.getSource("transit-lines").setData(await getJSON("/api/lines"));
+  } catch (err) {
+    state.linesLoaded = false; // try again on the next pan/zoom
+    console.error(err);
+  }
+}
+
+// Clicking a line shows its name, unless the same click already opened a vehicle popup.
+function onLineClick(entry) {
+  map.on("click", "transit-lines", (e) => {
+    const p = e.features[0].properties; // read now: MapLibre clears e.features after this handler
+    setTimeout(() => {
+      if (state.lastPopupClick === e.originalEvent) return;
+      const root = el("div", null, "popup");
+      root.append(el("h3", p.line), el("p", p.name || TRANSIT_MODE[p.mode] || "", "sub"), credit(entry.info));
+      new maplibregl.Popup({ maxWidth: "300px" }).setLngLat(e.lngLat).setDOMContent(root).addTo(map);
+    }, 0);
+  });
+  map.on("mouseenter", "transit-lines", () => (map.getCanvas().style.cursor = "pointer"));
+  map.on("mouseleave", "transit-lines", () => (map.getCanvas().style.cursor = ""));
+}
+
 // ---------- viewport layers: fetch only what's on screen ----------
 
 const VIEWPORT_REFRESH_MS = 20_000;
 
 function loadViewportLayers() {
+  loadLines();
   for (const entry of state.layers.values()) {
     if (entry.info.delivery === "viewport") loadViewport(entry).catch(console.error);
   }

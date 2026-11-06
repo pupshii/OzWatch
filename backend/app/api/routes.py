@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import asdict
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.store import BBox
+from app.transit_lines import lines_geojson
 
 router = APIRouter()
 
@@ -72,6 +74,19 @@ async def stream(request: Request):
     )
 
 
+@router.get("/api/lines")
+async def transit_lines(request: Request):
+    """Train, metro and light rail line shapes (GeoJSON). Rebuilt weekly; cached here 10 min."""
+    rt = _runtime(request)
+    headers = {"Cache-Control": "public, max-age=3600"}
+    if rt.lines is None:
+        return JSONResponse({"type": "FeatureCollection", "features": []}, headers=headers)
+    cache = rt.lines_cache
+    if not cache or time.monotonic() - cache["at"] > 600:
+        cache.update(at=time.monotonic(), body=await lines_geojson(rt.store.pool))
+    return JSONResponse(cache["body"], headers=headers)
+
+
 @router.get("/api/analytics")
 async def analytics(request: Request):
     return await _runtime(request).analytics.get()
@@ -85,6 +100,7 @@ async def health(request: Request):
     overall = "ok" if states <= {"ok"} else ("error" if states == {"error"} else "degraded")
     return {
         "status": overall,
+        "transit_lines": rt.lines.status.as_dict() if rt.lines else {"state": "disabled"},
         "store": type(rt.store).__name__,
         "sse_clients": rt.broadcaster.subscriber_count,
         "connectors": connectors,

@@ -36,8 +36,9 @@ from app.connectors.opensky import OpenSkyConnector
 from app.connectors.tfnsw_transit import TfnswTransitConnector
 from app.connectors.usgs_quakes import UsgsQuakesConnector
 from app.scheduler import Poller
-from app.store import Store, make_store
+from app.store import PostgresStore, Store, make_store
 from app.streaming import StreamRunner
+from app.transit_lines import TransitLinesBuilder
 
 log = logging.getLogger("ozwatch")
 
@@ -77,6 +78,8 @@ class Runtime:
     workers: dict[str, Poller | StreamRunner] = field(default_factory=dict)  # one per layer
     tasks: list[asyncio.Task] = field(default_factory=list)
     analytics: Analytics | None = None
+    lines: TransitLinesBuilder | None = None
+    lines_cache: dict = field(default_factory=dict)
 
 
 def create_app(
@@ -100,6 +103,8 @@ def create_app(
         )
         await rt.store.init()
         rt.analytics = Analytics(rt.store)
+        if isinstance(rt.store, PostgresStore):  # line shapes are built with PostGIS
+            rt.lines = TransitLinesBuilder(client, rt.store.pool, settings.tfnsw_api_key)
         for conn, override in connectors(settings, client):
             rt.workers[conn.info.key] = (
                 StreamRunner(conn, rt.store, rt.broadcaster)
@@ -118,6 +123,8 @@ def create_app(
             rt.tasks.append(
                 asyncio.create_task(_history_janitor(rt.store, settings.history_hours), name="janitor")
             )
+            if rt.lines:
+                rt.tasks.append(asyncio.create_task(rt.lines.run_forever(), name="transit-lines"))
         try:
             yield
         finally:
