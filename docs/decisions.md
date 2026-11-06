@@ -271,3 +271,20 @@ GTFS-realtime stores coordinates as 32-bit floats, so −33.87 arrives as
 −33.8699989. Rounding to decimal places doesn't remove that noise; keeping 7
 *significant digits* (what a 32-bit float can hold) recovers the value that
 was sent, with ~1 m precision. Found by a unit test, not in production.
+
+### 43. Icons drawn in code, not downloaded
+Cameras, fires and every public transport mode use a round badge with a
+white pictogram (bus, train, metro, tram, ferry, camera, flame), drawn on a
+canvas at 2x resolution and registered with MapLibre at startup. No icon
+files to host, no icon-font or icon-pack licence to track, and colours come
+from the same constants as the legends. The panel legends reuse the same
+badges, so the map and its key always match. A heading pointer is a separate,
+rotated layer under each vehicle badge, so the pictogram stays upright while
+the pointer shows the direction of travel.
+
+### 44. One click, one popup
+A single click can land on several of our layers at once (a vehicle badge and
+its heading pointer, a fire dot inside its fire area). Each layer's click
+handler would open its own popup, stacking two on top of each other. Found by
+a browser test; fixed by letting only the first handler for a given click
+open a popup.

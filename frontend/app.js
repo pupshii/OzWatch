@@ -9,6 +9,7 @@
 
 /* global maplibregl */
 import { initAnalytics } from "./analytics.js";
+import { badge, badgeURL, headingPointer } from "./icons.js";
 import { getParam, setParam } from "./urlstate.js";
 
 const BASEMAP = "https://tiles.openfreemap.org/styles/positron"; // free, no API key
@@ -39,14 +40,16 @@ const QUAKE_COLORS = { "Last 24 h": "#ae3ec9", "1–7 days": "#c9a3e0" };
 // Sydney's familiar mode colours, so commuters recognise them at a glance.
 const TRANSIT_COLORS = { Trains: "#f6891f", Metro: "#168388", Buses: "#00a3e0", Ferries: "#5ab031", "Light rail": "#ee343f" };
 const TRANSIT_MODE = { train: "Trains", metro: "Metro", bus: "Buses", ferry: "Ferries", lightrail: "Light rail" };
+// legend label -> pictogram (the mode keys double as pictogram names in icons.js)
+const TRANSIT_GLYPH = Object.fromEntries(Object.entries(TRANSIT_MODE).map(([mode, label]) => [label, mode]));
 
 // Per-layer look and popup. New layers add an entry here.
 const LAYER_STYLE = {
-  cameras: { kind: "circle", color: "#0b6bcb", radius: 3.5, stroke: 1, popup: cameraPopup },
+  cameras: { kind: "camera", color: "#0b6bcb", icon: "camera", popup: cameraPopup },
   // live: an open popup follows the feature and re-renders when it updates
-  fires: { kind: "fire", popup: firePopup, colors: FIRE_COLORS, legend: FIRE_COLORS, areas: true },
+  fires: { kind: "fire", popup: firePopup, colors: FIRE_COLORS, legend: FIRE_COLORS, legendIcon: () => "flame", areas: true },
   quakes: { kind: "quake", popup: quakePopup, legend: QUAKE_COLORS, decorate: decorateQuake },
-  transit: { kind: "transit", popup: transitPopup, live: true, legend: TRANSIT_COLORS },
+  transit: { kind: "transit", popup: transitPopup, live: true, legend: TRANSIT_COLORS, legendIcon: (label) => TRANSIT_GLYPH[label] },
   ships: { kind: "ship", popup: shipPopup, live: true, colors: SHIP_COLORS, legend: SHIP_COLORS },
   flights: { kind: "plane", color: "#d9480f", groundColor: "#8a919c", popup: flightPopup, live: true },
 };
@@ -105,14 +108,21 @@ function addLayer(info) {
   }
   map.addSource(info.key, { type: "geojson", data: emptyFC(), attribution: info.attribution });
   const makeLayer = {
-    plane: planeLayer, ship: shipLayer, circle: circleLayer, fire: fireLayer, quake: quakeLayer, transit: transitLayer,
+    plane: planeLayer, ship: shipLayer, circle: circleLayer, fire: fireLayer, quake: quakeLayer,
+    transit: transitLayer, camera: cameraLayer,
   };
-  map.addLayer(makeLayer[style.kind](info.key, style));
-  if (style.areas) map.addLayer(areaOutline(`${info.key}-areas`, style), info.key);
-  entry.mapLayers.push(info.key);
+  for (const layer of [makeLayer[style.kind](info.key, style)].flat()) {
+    map.addLayer(layer);
+    entry.mapLayers.push(layer.id);
+  }
+  if (style.areas) map.addLayer(areaOutline(`${info.key}-areas`, style), entry.mapLayers.find((id) => !id.includes("-areas")));
   state.firstPointLayer ??= info.key;
 
   const openPopup = (e) => {
+    // A click can hit several of our layers at once (a vehicle badge and its heading
+    // pointer, a fire dot inside its fire area): open only one popup per click.
+    if (state.lastPopupClick === e.originalEvent) return;
+    state.lastPopupClick = e.originalEvent;
     // Use our own copy of the feature: MapLibre's rendered copy can lag a delta behind.
     const id = e.features[0].properties.id;
     const f = entry.features.get(id);
@@ -144,8 +154,12 @@ function addLayer(info) {
     setParam("layers", on.length === state.layers.size ? null : on.join(","));
   });
   const swatch = row.querySelector(".swatch");
-  if (style.legend) {
-    row.append(legend(style.legend));
+  if (style.legend) row.append(legend(style.legend, style.legendIcon));
+  if (style.icon || style.legendIcon) {
+    const [label, color] = style.icon ? [null, style.color] : Object.entries(style.legend)[0];
+    swatch.classList.add("icon");
+    swatch.style.backgroundImage = `url(${badgeURL(color, style.icon || style.legendIcon(label))})`;
+  } else if (style.legend) {
     swatch.style.background = `conic-gradient(${Object.values(style.legend).slice(0, 4).join(", ")})`;
   } else swatch.style.background = style.color;
   document.getElementById("layers").append(row);
@@ -182,19 +196,38 @@ function circleLayer(key, style) {
 }
 
 // Fires: circles coloured by alert level; more urgent = bigger and drawn on top.
+// Fires: a flame badge in the alert-level colour; more urgent = bigger and drawn on top.
 function fireLayer(key, style) {
-  const color = ["match", ["get", "alert_level"], ...Object.entries(style.colors).flat(), "#8d6e63"];
-  const urgency = ["match", ["get", "alert_level"], "Emergency Warning", 3, "Watch and Act", 2, "Advice", 1, 0];
+  for (const [level, color] of Object.entries(style.colors)) map.addImage(`${key}|${level}`, badge(color, "flame"), { pixelRatio: 2 });
+  const level = ["get", "alert_level"];
+  const urgency = ["match", level, "Emergency Warning", 3, "Watch and Act", 2, "Advice", 1, 0];
+  const scale = ["match", level, "Emergency Warning", 1.15, "Watch and Act", 1, "Advice", 0.85, 0.7];
   return {
     id: key,
-    type: "circle",
+    type: "symbol",
     source: key,
-    layout: { "circle-sort-key": urgency },
-    paint: {
-      "circle-color": color,
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, ["+", 3, urgency], 10, ["+", 6, ["*", 2, urgency]]],
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 1.5,
+    layout: {
+      "icon-image": ["concat", `${key}|`, ["match", level, Object.keys(style.colors), level, "Not Applicable"]],
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 4, ["*", 0.55, scale], 10, ["*", 0.95, scale]],
+      "symbol-sort-key": urgency,
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
+  };
+}
+
+// Traffic cameras: a camera badge (click it for the live picture).
+function cameraLayer(key, style) {
+  map.addImage(`${key}|icon`, badge(style.color, "camera"), { pixelRatio: 2 });
+  return {
+    id: key,
+    type: "symbol",
+    source: key,
+    layout: {
+      "icon-image": `${key}|icon`,
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.45, 10, 0.72, 14, 0.95],
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
     },
   };
 }
@@ -219,22 +252,33 @@ function areaOutline(sourceKey, style) {
   };
 }
 
-// Public transport: circles in Sydney's mode colours; trains and metro a little bigger.
+// Public transport: a bus/train/metro/ferry/tram badge in Sydney's mode colours, with a
+// small pointer on the rim showing the direction of travel. Buses slightly smaller.
 function transitLayer(key) {
+  for (const [mode, label] of Object.entries(TRANSIT_MODE)) {
+    map.addImage(`${key}|${mode}`, badge(TRANSIT_COLORS[label], mode), { pixelRatio: 2 });
+    map.addImage(`${key}|${mode}|heading`, headingPointer(TRANSIT_COLORS[label]), { pixelRatio: 2 });
+  }
   const mode = ["get", "mode"];
-  return {
-    id: key,
-    type: "circle",
-    source: key,
-    minzoom: 9,
-    layout: { "circle-sort-key": ["match", mode, "bus", 0, 1] },
-    paint: {
-      "circle-color": ["match", mode, ...Object.entries(TRANSIT_MODE).flatMap(([m, n]) => [m, TRANSIT_COLORS[n]]), "#888"],
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, ["match", mode, "bus", 3, 4.5], 15, ["match", mode, "bus", 6, 8]],
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 1.2,
+  const known = ["match", mode, Object.keys(TRANSIT_MODE), mode, "bus"];
+  const size = ["interpolate", ["linear"], ["zoom"], 11, ["match", mode, "bus", 0.62, 0.72], 14, ["match", mode, "bus", 0.95, 1.05], 17, 1.3];
+  const common = { "icon-size": size, "icon-allow-overlap": true, "icon-ignore-placement": true, "symbol-sort-key": ["match", mode, "bus", 0, 1] };
+  return [
+    {
+      id: `${key}-heading`,
+      type: "symbol",
+      source: key,
+      minzoom: 9,
+      filter: ["==", ["typeof", ["get", "bearing"]], "number"], // no pointer when heading is unknown
+      layout: {
+        ...common,
+        "icon-image": ["concat", `${key}|`, known, "|heading"],
+        "icon-rotate": ["get", "bearing"],
+        "icon-rotation-alignment": "map",
+      },
     },
-  };
+    { id: key, type: "symbol", source: key, minzoom: 9, layout: { ...common, "icon-image": ["concat", `${key}|`, known] } },
+  ];
 }
 
 // Earthquakes: size by magnitude, darker if in the last 24 h.
@@ -322,12 +366,13 @@ function shipIcon(color, moving) {
   return ctx.getImageData(0, 0, size, size);
 }
 
-function legend(colors) {
+function legend(colors, iconFor) {
   const box = el("div", null, "legend");
   for (const [label, color] of Object.entries(colors)) {
     const item = el("span", null, "legend-item");
-    const chip = el("span", null, "chip");
-    chip.style.background = color;
+    const chip = el("span", null, iconFor ? "chip icon" : "chip");
+    if (iconFor) chip.style.backgroundImage = `url(${badgeURL(color, iconFor(label))})`;
+    else chip.style.background = color;
     item.append(chip, document.createTextNode(label));
     box.append(item);
   }

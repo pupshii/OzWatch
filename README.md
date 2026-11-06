@@ -20,7 +20,7 @@ access, rate limits and licence before any code was written
 
 ## Features
 
-- **Six live layers**, each toggleable, with a "last updated" time, a health dot and source attribution
+- **Six live layers** with recognisable icons (bus, train, ferry, tram, camera, flame badges; planes and ships rotated to their heading), each toggleable, with a "last updated" time, a health dot and source attribution
   - **Traffic cameras (NSW):** about 250 cameras; click for the latest image (Transport for NSW)
   - **Flights:** ADS-B aircraft over Australia, icons rotated to their heading (OpenSky Network)
   - **Ships:** live AIS positions over a websocket, coloured by vessel type (aisstream.io)
@@ -69,7 +69,7 @@ its own format into one common record: `id, layer, lat, lon, timestamp,
 properties`. Everything after that (storage, API, live stream, map) is shared,
 so adding a source is one file plus tests. Polled sources run on intervals
 worked out from their rate limits. The AIS websocket is buffered and written
-in 5-second batches. The 42 design decisions are explained in plain language in
+in 5-second batches. The 44 design decisions are explained in plain language in
 [docs/decisions.md](docs/decisions.md).
 
 **Stack:** Python 3.12 · FastAPI · asyncpg · PostgreSQL 16 + PostGIS 3.4 ·
@@ -198,6 +198,6 @@ aggregate charts. There are no per-vehicle tracks or "pattern of life" views.
 ## Project docs
 
 - [docs/data-sources.md](docs/data-sources.md): every source checked for access, limits, licence, go/no-go
-- [docs/decisions.md](docs/decisions.md): 42 design decisions in plain language
+- [docs/decisions.md](docs/decisions.md): 44 design decisions in plain language
 - [docs/plan.md](docs/plan.md): milestones and repo layout
 - [docs/deploy-gcp.md](docs/deploy-gcp.md) / [docs/deploy.md](docs/deploy.md): deployment guides
