@@ -74,6 +74,7 @@ window.ozwatch = { map, state }; // handy in the browser dev console and for end
 initAnalytics({ fireColors: FIRE_COLORS, transitColors: TRANSIT_COLORS });
 
 map.on("load", async () => {
+  emphasiseBasemapRailways();
   const layers = await getJSON("/api/layers");
   for (const info of layers) addLayer(info);
   await refreshAll();
@@ -268,7 +269,7 @@ function transitLayer(key) {
   const size = ["interpolate", ["linear"], ["zoom"], 11, ["match", mode, "bus", 0.62, 0.72], 14, ["match", mode, "bus", 0.95, 1.05], 17, 1.3];
   const common = { "icon-size": size, "icon-allow-overlap": true, "icon-ignore-placement": true, "symbol-sort-key": ["match", mode, "bus", 0, 1] };
   map.addSource(`${key}-lines`, { type: "geojson", data: emptyFC(), attribution: "Transport for NSW" });
-  const width = ["interpolate", ["linear"], ["zoom"], 8, 1.2, 11, 2.4, 14, 4.5];
+  const width = ["interpolate", ["linear"], ["zoom"], 8, 2, 11, 3.2, 14, 5.5, 17, 8];
   const before = { before: state.firstPointLayer }; // under cameras, fires, ships, planes...
   return [
     {
@@ -279,7 +280,7 @@ function transitLayer(key) {
       metadata: before,
       layout: { "line-join": "round", "line-cap": "round" },
       // zoom curves can't be nested inside maths in MapLibre, so the outline gets its own curve
-      paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.2, 11, 4.4, 14, 6.5], "line-opacity": 0.85 },
+      paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4, 11, 5.6, 14, 8.5, 17, 11.5], "line-opacity": 0.95 },
     },
     {
       id: `${key}-lines`,
@@ -288,7 +289,7 @@ function transitLayer(key) {
       minzoom: 8,
       metadata: before,
       layout: { "line-join": "round", "line-cap": "round" },
-      paint: { "line-color": ["get", "color"], "line-width": width, "line-opacity": 0.9 },
+      paint: { "line-color": ["get", "color"], "line-width": width, "line-opacity": 1 },
     },
     {
       id: `${key}-heading`,
@@ -425,6 +426,31 @@ function planeIcon(color) {
 }
 
 // ---------- rail lines (train, metro, light rail) ----------
+
+// The positron basemap draws railways very faintly (#ddd + white dashes, from zoom 13;
+// metro/light rail only from zoom 16). Make them a clear dark "railway" line with white
+// dashes, visible from suburb zoom. Our coloured TfNSW lines draw on top when available.
+// Layer ids are from OpenFreeMap's positron style; missing ones are simply skipped.
+function emphasiseBasemapRailways() {
+  const width = (z1, w1, z2, w2, z3, w3) => ["interpolate", ["linear"], ["zoom"], z1, w1, z2, w2, z3, w3];
+  const restyle = {
+    railway: { min: 10, color: "#5f6b7a", width: width(10, 1.2, 13, 2.4, 17, 5) },
+    railway_dashline: { min: 13, color: "#ffffff", width: width(13, 1, 15, 1.6, 17, 3) },
+    railway_transit: { min: 12, color: "#5f6b7a", width: width(12, 1.2, 14, 2.2, 17, 4.5) },
+    railway_transit_dashline: { min: 14, color: "#ffffff", width: width(14, 0.9, 15, 1.4, 17, 2.5) },
+  };
+  for (const [id, r] of Object.entries(restyle)) {
+    if (!map.getLayer(id)) continue;
+    try {
+      map.setLayerZoomRange(id, r.min, 24);
+      map.setPaintProperty(id, "line-color", r.color);
+      map.setPaintProperty(id, "line-width", r.width);
+      map.setPaintProperty(id, "line-opacity", 0.95);
+    } catch (err) {
+      console.warn("could not restyle", id, err);
+    }
+  }
+}
 
 // The line shapes (~hundreds of KB) are fetched once, the first time the public
 // transport layer is visible at suburb-level zoom or closer.
