@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     # A descriptive User-Agent is polite and lets data owners contact you.
     user_agent: str = "OzWatch/0.1 (portfolio project; +https://github.com/pupshii/ozwatch)"
 
+    # Public site details: link previews (Open Graph) and the "About" card.
+    site_domain: str = ""  # e.g. ozwatchlivemap.duckdns.org (compose passes DOMAIN)
+    site_author: str = ""  # shown as "Built by ..." when set
+    site_linkedin_url: str = ""
+    site_github_url: str = "https://github.com/pupshii/OzWatch"
+
+    @property
+    def site_url(self) -> str:
+        return f"https://{self.site_domain}" if self.site_domain else ""
+
 
 @lru_cache
 def get_settings() -> Settings:

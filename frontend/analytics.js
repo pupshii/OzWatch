@@ -39,6 +39,7 @@ export function initAnalytics({ fireColors, transitColors }) {
   tip = document.getElementById("viz-tip");
   const setOpen = (open) => {
     drawer.hidden = !open;
+    document.body.classList.toggle("analytics-open", open); // lets the stats bar make room
     button.setAttribute("aria-expanded", String(open));
     clearInterval(timer);
     setParam("analytics", open ? 1 : null); // shareable: the link opens with the panel showing

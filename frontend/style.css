@@ -129,9 +129,87 @@ table.health td:last-child { color: var(--muted); }
   font-size: 12px; background: var(--fg); color: var(--bg); box-shadow: var(--shadow);
 }
 
+/* ---------- header buttons, hide/show panel ---------- */
+.header-buttons { display: flex; gap: 6px; margin-top: 10px; }
+.header-buttons .analytics-toggle { margin-top: 0; }
+.panel-hide {
+  position: absolute; top: 22px; right: -2px; border: 0; background: none; color: var(--muted);
+  font-size: 18px; cursor: pointer; padding: 2px 6px; line-height: 1;
+}
+#panel header .conn { right: 26px; }
+.panel-show {
+  position: absolute; top: 12px; left: 12px; z-index: 3; font: inherit; font-weight: 600; font-size: 13px;
+  padding: 8px 14px; border-radius: 8px; border: 0; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); cursor: pointer;
+}
+#panel[hidden], .panel-show[hidden] { display: none; }
+
+/* ---------- live stats bar ---------- */
+#stats {
+  position: absolute; top: 12px; left: 336px; right: 12px; z-index: 1;
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; pointer-events: none;
+}
+body.panel-hidden #stats { left: 130px; }
+body.analytics-open #stats { right: 404px; }
+.stat {
+  pointer-events: auto; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 5px;
+  border-radius: 999px; border: 0; background: var(--bg); color: var(--fg); box-shadow: var(--shadow);
+  font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.stat img { width: 30px; height: 30px; margin: -4px -2px -4px -5px; } /* badge art has a margin built in */
+.stat.off { opacity: 0.45; }
+.stat.live { order: 0; padding: 4px 10px; color: var(--ok); cursor: default; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(31, 157, 85, 0.6); } 70% { box-shadow: 0 0 0 7px rgba(31, 157, 85, 0); } 100% { box-shadow: 0 0 0 0 rgba(31, 157, 85, 0); } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+/* ---------- quick views ---------- */
+.views { display: flex; flex-wrap: wrap; gap: 6px; }
+.view-chip {
+  font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+}
+.view-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- foldable legends ---------- */
+.key-toggle {
+  margin-left: auto; font: inherit; font-size: 11px; color: var(--muted); background: none; border: 0;
+  cursor: pointer; padding: 0 2px;
+}
+.key-toggle:hover { color: var(--accent); }
+.legend[hidden] { display: none; }
+
+/* ---------- About card ---------- */
+#about {
+  border: 0; border-radius: 14px; padding: 22px 24px 18px; width: min(460px, calc(100vw - 32px));
+  background: var(--bg); color: var(--fg); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+#about::backdrop { background: rgba(15, 20, 30, 0.45); }
+#about h2 { margin: 0; font-size: 24px; text-transform: none; letter-spacing: 0; color: var(--fg); }
+#about .lead { margin: 4px 0 12px; color: var(--muted); }
+#about .about-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+#about .about-list li { padding-left: 20px; position: relative; }
+#about .about-list li::before { content: "●"; position: absolute; left: 4px; color: var(--accent); font-size: 10px; top: 3px; }
+#about .by { margin: 0 0 10px; font-weight: 600; }
+#about .about-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.link-button {
+  font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line);
+  color: var(--fg); text-decoration: none;
+}
+.link-button:hover { border-color: var(--accent); color: var(--accent); }
+#about .primary {
+  font: inherit; font-weight: 600; width: 100%; padding: 10px; border: 0; border-radius: 8px;
+  background: var(--accent); color: #fff; cursor: pointer;
+}
+#about .close { position: absolute; top: 10px; right: 12px; border: 0; background: none; font-size: 22px; color: var(--muted); cursor: pointer; }
+#about .fine { font-size: 11px; color: var(--muted); margin: 12px 0 0; }
+
 /* Phones: panel becomes a bottom sheet */
 @media (max-width: 640px) {
   #panel { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-height: 45%; border-radius: 12px 12px 0 0; padding: 12px 16px; }
-  .maplibregl-ctrl-bottom-right { bottom: 45%; }
+  body:not(.panel-hidden) .maplibregl-ctrl-bottom-right { bottom: 45%; } /* only above the open bottom sheet */
   #analytics { top: 0; right: 0; bottom: 0; left: 0; width: auto; border-radius: 0; z-index: 5; }
+  #stats { left: 12px; right: 12px; top: 58px; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; pointer-events: auto; padding-bottom: 4px; }
+  body.panel-hidden #stats { left: 12px; }
+  .stat { flex: none; font-size: 12px; }
+  .panel-hide { top: 14px; }
 }

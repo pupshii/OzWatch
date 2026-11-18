@@ -74,6 +74,19 @@ async def stream(request: Request):
     )
 
 
+@router.get("/api/site")
+async def site(request: Request):
+    """Details for the About card. Links are only passed through if they are https."""
+    s = request.app.state.settings
+    https = lambda u: u if u.startswith("https://") else None  # noqa: E731
+    return {
+        "author": s.site_author.strip() or None,
+        "linkedin": https(s.site_linkedin_url.strip()),
+        "github": https(s.site_github_url.strip()),
+        "url": s.site_url or None,
+    }
+
+
 @router.get("/api/lines")
 async def transit_lines(request: Request):
     """Train, metro and light rail line shapes (GeoJSON). Rebuilt weekly; cached here 10 min."""

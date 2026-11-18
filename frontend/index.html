@@ -3,23 +3,51 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OzWatch</title>
-  <meta name="description" content="Live open-data map of Australia: traffic cameras, flights, ships and hazards." />
+  <title>OzWatch: live open-data map of Australia</title>
+  <meta name="description" content="Live map of Australia: flights, ships, Sydney trains, buses and ferries, bushfires, earthquakes and traffic cameras, from open data." />
+  <meta name="theme-color" content="#1b1f27" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+  <!-- Link previews (LinkedIn, Slack, iMessage...). {{SITE_URL}} is filled in by the server. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OzWatch" />
+  <meta property="og:title" content="OzWatch: live open-data map of Australia" />
+  <meta property="og:description" content="Flights, ships, Sydney trains, buses and ferries, bushfires, earthquakes and traffic cameras, live on one map." />
+  <meta property="og:url" content="{{SITE_URL}}/" />
+  <meta property="og:image" content="{{SITE_URL}}/social-card.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="OzWatch map of Australia with live flights, ships and transit" />
+  <meta name="twitter:card" content="summary_large_image" />
+
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="map" aria-label="Map of Australia"></div>
 
+  <!-- Live counts across the top -->
+  <div id="stats" aria-label="Live counts"><span class="stat live"><span class="pulse"></span>Live</span></div>
+
+  <button id="panel-show" class="panel-show" type="button" aria-controls="panel" hidden>☰ Layers</button>
+
   <aside id="panel" aria-label="Layers">
     <header>
       <h1>OzWatch</h1>
       <p class="tagline">Live open data across Australia</p>
       <span id="conn" class="conn" title="Live connection to server">connecting…</span>
-      <button id="analytics-toggle" class="analytics-toggle" type="button" aria-expanded="false" aria-controls="analytics">
-        Analytics
-      </button>
+      <button id="panel-hide" class="panel-hide" type="button" aria-label="Hide panel" title="Hide panel">«</button>
+      <div class="header-buttons">
+        <button id="analytics-toggle" class="analytics-toggle" type="button" aria-expanded="false" aria-controls="analytics">
+          Analytics
+        </button>
+        <button id="about-open" class="analytics-toggle" type="button" aria-controls="about">About</button>
+      </div>
     </header>
+    <section>
+      <h2>Quick views</h2>
+      <div id="views" class="views"></div>
+    </section>
     <section>
       <h2>Layers</h2>
       <ul id="layers"></ul>
@@ -42,6 +70,25 @@
   </aside>
   <div id="viz-tip" role="tooltip" hidden></div>
 
+  <dialog id="about" aria-labelledby="about-title">
+    <form method="dialog">
+      <button class="close" aria-label="Close">×</button>
+    </form>
+    <h2 id="about-title">OzWatch</h2>
+    <p class="lead">A live map of Australia built from public open data.</p>
+    <ul class="about-list">
+      <li><strong>Flights</strong> and <strong>ships</strong> moving in real time</li>
+      <li><strong>Sydney trains, metro, buses, ferries and light rail</strong> on their lines (zoom in)</li>
+      <li><strong>Bushfires</strong>, <strong>earthquakes</strong> and <strong>traffic cameras</strong> you can click for a live photo</li>
+      <li><strong>Analytics</strong>: spatial SQL charts over the last 24 hours</li>
+    </ul>
+    <p class="by" hidden></p>
+    <div class="about-links"></div>
+    <form method="dialog"><button class="primary">Explore the map</button></form>
+    <p class="fine">Not an official warning service. Data from Transport for NSW, OpenSky Network, aisstream.io,
+      NSW Rural Fire Service and USGS.</p>
+  </dialog>
+
   <template id="layer-row">
     <li class="layer">
       <label>
@@ -52,6 +99,7 @@
       </label>
       <div class="meta">
         <span class="dot"></span><span class="updated"></span><span class="badge demo" hidden>sample data</span>
+        <button class="key-toggle" type="button" aria-expanded="false" hidden>key ▾</button>
       </div>
     </li>
   </template>

@@ -69,7 +69,7 @@ its own format into one common record: `id, layer, lat, lon, timestamp,
 properties`. Everything after that (storage, API, live stream, map) is shared,
 so adding a source is one file plus tests. Polled sources run on intervals
 worked out from their rate limits. The AIS websocket is buffered and written
-in 5-second batches. The 46 design decisions are explained in plain language in
+in 5-second batches. The 47 design decisions are explained in plain language in
 [docs/decisions.md](docs/decisions.md).
 
 **Stack:** Python 3.12 · FastAPI · asyncpg · PostgreSQL 16 + PostGIS 3.4 ·
@@ -94,6 +94,7 @@ Open <http://localhost:8000>. Health: <http://localhost:8000/health>. API docs: 
 | `AISSTREAM_API_KEY` | [aisstream.io](https://aisstream.io) (sign in with GitHub) | 6 sample vessels |
 
 Keys live only in `.env` (git-ignored) and stay on the server; the browser never sees them.
+For the About card on a public site, set `SITE_AUTHOR` (your name) and `SITE_LINKEDIN_URL`.
 Other settings: `POLL_CAMERAS`, `POLL_FLIGHTS`, `HISTORY_HOURS` (default 24),
 `LOG_LEVEL`, `POSTGRES_PASSWORD`, `DOMAIN` (production).
 
@@ -199,6 +200,6 @@ aggregate charts. There are no per-vehicle tracks or "pattern of life" views.
 ## Project docs
 
 - [docs/data-sources.md](docs/data-sources.md): every source checked for access, limits, licence, go/no-go
-- [docs/decisions.md](docs/decisions.md): 46 design decisions in plain language
+- [docs/decisions.md](docs/decisions.md): 47 design decisions in plain language
 - [docs/plan.md](docs/plan.md): milestones and repo layout
 - [docs/deploy-gcp.md](docs/deploy-gcp.md) / [docs/deploy.md](docs/deploy.md): deployment guides

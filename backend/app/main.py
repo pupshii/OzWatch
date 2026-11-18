@@ -22,6 +22,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.analytics import Analytics
@@ -138,7 +139,16 @@ def create_app(
 
     app = FastAPI(title="OzWatch", version="0.1.0", lifespan=lifespan)
     app.include_router(router)
+    app.state.settings = settings
     if FRONTEND_DIR.is_dir():
+        # The home page needs the site's absolute URL in its link-preview (Open Graph)
+        # tags, which LinkedIn/Slack require; fill it in once at startup.
+        index_html = (FRONTEND_DIR / "index.html").read_text().replace("{{SITE_URL}}", settings.site_url)
+
+        @app.get("/", include_in_schema=False)
+        async def index():
+            return HTMLResponse(index_html, headers={"Cache-Control": "no-cache"})
+
         app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
     return app
 

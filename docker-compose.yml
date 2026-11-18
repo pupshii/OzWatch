@@ -31,6 +31,9 @@ services:
       POLL_TRANSIT: ${POLL_TRANSIT:-}
       HISTORY_HOURS: ${HISTORY_HOURS:-24}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SITE_DOMAIN: ${DOMAIN:-}
+      SITE_AUTHOR: ${SITE_AUTHOR:-}
+      SITE_LINKEDIN_URL: ${SITE_LINKEDIN_URL:-}
     depends_on:
       db:
         condition: service_healthy

@@ -11,6 +11,7 @@
 import { initAnalytics } from "./analytics.js";
 import { badge, badgeURL, headingPointer } from "./icons.js";
 import { getParam, setParam } from "./urlstate.js";
+import { initChrome } from "./ui.js";
 
 const BASEMAP = "https://tiles.openfreemap.org/styles/positron"; // free, no API key
 const AUSTRALIA = [[110, -45], [156, -9]];
@@ -48,10 +49,10 @@ const LAYER_STYLE = {
   cameras: { kind: "camera", color: "#0b6bcb", icon: "camera", popup: cameraPopup },
   // live: an open popup follows the feature and re-renders when it updates
   fires: { kind: "fire", popup: firePopup, colors: FIRE_COLORS, legend: FIRE_COLORS, legendIcon: () => "flame", areas: true },
-  quakes: { kind: "quake", popup: quakePopup, legend: QUAKE_COLORS, decorate: decorateQuake },
+  quakes: { kind: "quake", color: "#ae3ec9", icon: "quake", popup: quakePopup, legend: QUAKE_COLORS, decorate: decorateQuake },
   transit: { kind: "transit", popup: transitPopup, live: true, legend: TRANSIT_COLORS, legendIcon: (label) => TRANSIT_GLYPH[label] },
-  ships: { kind: "ship", popup: shipPopup, live: true, colors: SHIP_COLORS, legend: SHIP_COLORS },
-  flights: { kind: "plane", color: "#d9480f", groundColor: "#8a919c", popup: flightPopup, live: true },
+  ships: { kind: "ship", color: "#1c7ed6", icon: "ship", popup: shipPopup, live: true, colors: SHIP_COLORS, legend: SHIP_COLORS },
+  flights: { kind: "plane", color: "#d9480f", icon: "plane", groundColor: "#8a919c", popup: flightPopup, live: true },
 };
 const DEFAULT_STYLE = { kind: "circle", color: "#6b7280", radius: 4, popup: genericPopup };
 
@@ -72,11 +73,13 @@ map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom
 window.ozwatch = { map, state }; // handy in the browser dev console and for end-to-end tests
 
 initAnalytics({ fireColors: FIRE_COLORS, transitColors: TRANSIT_COLORS });
+initChrome();
 
 map.on("load", async () => {
   emphasiseBasemapRailways();
   const layers = await getJSON("/api/layers");
   for (const info of layers) addLayer(info);
+  renderQuickViews();
   await refreshAll();
   connectStream();
   setInterval(renderAllMeta, 30_000); // keep "updated 3 min ago" fresh
@@ -148,18 +151,21 @@ function addLayer(info) {
   // Panel row
   const row = document.getElementById("layer-row").content.firstElementChild.cloneNode(true);
   row.querySelector(".name").textContent = info.title;
-  row.querySelector("input").addEventListener("change", (ev) => {
-    entry.visible = ev.target.checked;
-    applyVisibility(entry);
-    if (entry.visible && entry.info.delivery === "viewport") {
-      loadViewport(entry).catch(console.error);
-      loadLines();
-    }
-    const on = [...state.layers.values()].filter((e) => e.visible).map((e) => e.info.key);
-    setParam("layers", on.length === state.layers.size ? null : on.join(","));
-  });
+  row.querySelector("input").addEventListener("change", (ev) => setVisible(entry, ev.target.checked));
   const swatch = row.querySelector(".swatch");
-  if (style.legend) row.append(legend(style.legend, style.legendIcon));
+  if (style.legend) {
+    const box = legend(style.legend, style.legendIcon);
+    const toggle = row.querySelector(".key-toggle");
+    const show = (open) => {
+      box.hidden = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.textContent = open ? "key ▴" : "key ▾";
+    };
+    toggle.hidden = false;
+    toggle.addEventListener("click", () => show(box.hidden));
+    show(false);
+    row.append(box);
+  }
   if (style.icon || style.legendIcon) {
     const [label, color] = style.icon ? [null, style.color] : Object.entries(style.legend)[0];
     swatch.classList.add("icon");
@@ -425,6 +431,78 @@ function planeIcon(color) {
   return ctx.getImageData(0, 0, size, size);
 }
 
+// ---------- live stats bar ----------
+
+// Whole-network counts from the server (not just what's on screen), in this order.
+const STATS = [
+  ["flights", "plane", "#d9480f", "flights"],
+  ["ships", "ship", "#1c7ed6", "ships"],
+  ["transit", "bus", "#00a3e0", "Sydney transit vehicles"],
+  ["fires", "flame", "#c92a2a", "fire incidents (NSW)"],
+  ["quakes", "quake", "#ae3ec9", "earthquakes (7 days)"],
+  ["cameras", "camera", "#0b6bcb", "traffic cameras"],
+];
+
+function renderStat(entry) {
+  const def = STATS.find(([key]) => key === entry.info.key);
+  if (!def) return;
+  const [key, glyph, color, label] = def;
+  const bar = document.getElementById("stats");
+  let item = bar.querySelector(`[data-key="${key}"]`);
+  if (!item) {
+    item = el("button", null, "stat");
+    item.type = "button";
+    item.dataset.key = key;
+    item.style.order = String(STATS.indexOf(def) + 1);
+    const img = el("img");
+    img.src = badgeURL(color, glyph);
+    img.alt = "";
+    item.append(img, el("span", null, "n"));
+    // Clicking a count switches that layer on (if it was off) and shows its panel row.
+    item.addEventListener("click", () => {
+      if (!entry.visible) setVisible(entry, true);
+      entry.row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+    bar.append(item);
+  }
+  const n = entry.status?.feature_count ?? 0;
+  item.querySelector(".n").textContent = n.toLocaleString("en-AU");
+  item.title = `${n.toLocaleString("en-AU")} ${label}${entry.visible ? "" : " (layer hidden, click to show)"}`;
+  item.classList.toggle("off", !entry.visible);
+}
+
+// ---------- quick views ----------
+
+const QUICK_VIEWS = [
+  { label: "All of Australia", bounds: AUSTRALIA, layers: null },
+  { label: "Sydney transit", center: [151.207, -33.873], zoom: 13.2, layers: ["transit"] },
+  { label: "East coast flights", center: [149.8, -32.2], zoom: 5.4, layers: ["flights"] },
+  { label: "Sydney shipping", center: [151.24, -33.93], zoom: 10.6, layers: ["ships"] },
+  { label: "Bushfires", center: [148.6, -32.6], zoom: 5.7, layers: ["fires"] },
+  { label: "Traffic cameras", center: [151.13, -33.84], zoom: 10.8, layers: ["cameras", "fires"] },
+];
+
+function renderQuickViews() {
+  const box = document.getElementById("views");
+  for (const view of QUICK_VIEWS) {
+    const b = el("button", view.label, "view-chip");
+    b.type = "button";
+    b.addEventListener("click", () => applyView(view));
+    box.append(b);
+  }
+}
+
+function applyView(view) {
+  for (const entry of state.layers.values()) {
+    const on = view.layers == null || view.layers.includes(entry.info.key);
+    if (entry.visible !== on) setVisible(entry, on);
+  }
+  state.openPopup?.popup.remove();
+  if (view.bounds) map.fitBounds(view.bounds, { padding: 20, duration: 1600 });
+  else map.flyTo({ center: view.center, zoom: view.zoom, duration: 1800, essential: true });
+  window.dispatchEvent(new CustomEvent("ozwatch:view", { detail: view.label }));
+}
+
 // ---------- rail lines (train, metro, light rail) ----------
 
 // The positron basemap draws railways very faintly (#ddd + white dashes, from zoom 13;
@@ -509,6 +587,19 @@ async function loadViewport(entry) {
   const fc = await getJSON(`/api/layers/${encodeURIComponent(key)}/features?bbox=${bbox}`);
   entry.features = new Map(fc.features.map((f) => [f.id, f]));
   pushToMap(key);
+}
+
+function setVisible(entry, on) {
+  entry.visible = on;
+  entry.row.querySelector("input").checked = on;
+  applyVisibility(entry);
+  renderStat(entry); // fade/unfade its count in the stats bar
+  if (on && entry.info.delivery === "viewport") {
+    loadViewport(entry).catch(console.error);
+    loadLines();
+  }
+  const visible = [...state.layers.values()].filter((e) => e.visible).map((e) => e.info.key);
+  setParam("layers", visible.length === state.layers.size ? null : visible.join(","));
 }
 
 function applyVisibility(entry) {
@@ -634,6 +725,7 @@ function renderAllMeta() {
 function renderMeta(entry) {
   const { row, status } = entry;
   if (!row) return;
+  renderStat(entry);
   row.querySelector(".count").textContent =
     entry.info.delivery === "viewport"
       ? entry.zoomedOut ? "zoom in" : `${entry.features.size.toLocaleString()} in view`

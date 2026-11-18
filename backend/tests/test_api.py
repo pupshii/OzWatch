@@ -84,3 +84,23 @@ def test_lines_endpoint_without_postgres(client):
     r = client.get("/api/lines")
     assert r.json() == {"type": "FeatureCollection", "features": []}
     assert "max-age" in r.headers["cache-control"]
+
+
+def test_site_details_and_link_preview_url():
+    settings = Settings(
+        database_url="", site_domain="ozwatch.example.org", site_author="Test Person",
+        site_linkedin_url="https://www.linkedin.com/in/test", site_github_url="javascript:alert(1)",
+    )  # fmt: skip
+    app = create_app(settings, store=MemoryStore(), connectors=cameras_only, start_workers=False)
+    with TestClient(app) as c:
+        site = c.get("/api/site").json()
+        assert site == {
+            "author": "Test Person",
+            "linkedin": "https://www.linkedin.com/in/test",
+            "github": None,  # non-https links are dropped
+            "url": "https://ozwatch.example.org",
+        }
+        page = c.get("/").text
+        assert 'content="https://ozwatch.example.org/social-card.jpg"' in page
+        assert "{{SITE_URL}}" not in page
+        assert c.get("/social-card.jpg").status_code == 200

@@ -307,3 +307,12 @@ For metro and light rail the server tries a short list of candidate paths
 (named like the confirmed live feeds), uses the first that returns a real
 zip, and reports on `/health` which path worked, or every path's error.
 One wrong guess can't break the other lines.
+
+### 47. Design for the first 10 seconds of a visit
+Most visitors arrive from a link (a CV, LinkedIn) and decide quickly. So:
+- **A live stats bar** (flights, ships, transit vehicles, fires, quakes, cameras) shows the scale before they read anything.
+- **An About card on the first visit** explains what it is and who built it, with links to the code. It's shown once (remembered in the browser) and stays reachable from the panel.
+- **Quick views** fly to ready-made scenes (Sydney transit, east coast flights, bushfires...) so nobody has to know where to zoom.
+- **A link-preview card** (Open Graph tags plus a 1200×630 image) means a shared link shows a picture, not a bare URL. The server fills in the absolute URL from the `DOMAIN` setting, because LinkedIn needs one.
+- **Legends fold away and the panel can hide;** on phones the map starts uncovered.
+The author name and LinkedIn URL are settings (`SITE_AUTHOR`, `SITE_LINKEDIN_URL`), not hard-coded, so the code stays reusable.
