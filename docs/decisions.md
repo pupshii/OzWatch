@@ -316,3 +316,16 @@ Most visitors arrive from a link (a CV, LinkedIn) and decide quickly. So:
 - **A link-preview card** (Open Graph tags plus a 1200×630 image) means a shared link shows a picture, not a bare URL. The server fills in the absolute URL from the `DOMAIN` setting, because LinkedIn needs one.
 - **Legends fold away and the panel can hide;** on phones the map starts uncovered.
 The author name and LinkedIn URL are settings (`SITE_AUTHOR`, `SITE_LINKEDIN_URL`), not hard-coded, so the code stays reusable.
+
+### 48. When a source blocks your server, swap the connector, not the app
+After deployment, OpenSky timed out from the Google Cloud server (both its API
+and its login host), though nothing documents a cloud block, and the same
+requests work from a home connection. Debugged by testing from the server
+itself with `curl`, then checking alternatives the same way before writing
+any code: adsb.fi answered (200), airplanes.live refused (403). adsb.fi became
+a second flights connector that emits exactly the same Feature properties, so
+the map, popups and analytics needed no changes; one setting
+(`FLIGHTS_SOURCE`) picks the source. One adsb.fi request covers a 250 NM
+circle, so Australia takes 20 circles per update, paced under its
+1 request/second limit, with an early stop on HTTP 429 and overlapping
+circles de-duplicated by keeping each aircraft's freshest position.

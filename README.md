@@ -69,7 +69,7 @@ its own format into one common record: `id, layer, lat, lon, timestamp,
 properties`. Everything after that (storage, API, live stream, map) is shared,
 so adding a source is one file plus tests. Polled sources run on intervals
 worked out from their rate limits. The AIS websocket is buffered and written
-in 5-second batches. The 47 design decisions are explained in plain language in
+in 5-second batches. The 48 design decisions are explained in plain language in
 [docs/decisions.md](docs/decisions.md).
 
 **Stack:** Python 3.12 · FastAPI · asyncpg · PostgreSQL 16 + PostGIS 3.4 ·
@@ -149,6 +149,7 @@ address) or [docs/deploy.md](docs/deploy.md) (any VPS).
 |---|---|---|
 | Traffic cameras | [Transport for NSW Open Data](https://opendata.transport.nsw.gov.au/dataset/live-traffic-cameras) | CC BY: © Transport for NSW |
 | Public transport | [Transport for NSW Open Data](https://opendata.transport.nsw.gov.au) (GTFS-realtime vehicle positions) | CC BY: © Transport for NSW |
+| Flights (alternative, `FLIGHTS_SOURCE=adsbfi`) | [adsb.fi](https://adsb.fi) open data | Personal, non-commercial use; cite adsb.fi |
 | Flights | [The OpenSky Network](https://opensky-network.org) | Non-commercial use. Schäfer, Strohmeier, Lenders, Martinovic & Wilhelm, "Bringing Up OpenSky: A Large-scale ADS-B Sensor Network for Research", IPSN 2014 |
 | Ships | [aisstream.io](https://aisstream.io) | Free API, attribution |
 | Fires & incidents | [NSW Rural Fire Service](https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date/feeds) | CC BY: © State of New South Wales (NSW RFS) |
@@ -200,6 +201,6 @@ aggregate charts. There are no per-vehicle tracks or "pattern of life" views.
 ## Project docs
 
 - [docs/data-sources.md](docs/data-sources.md): every source checked for access, limits, licence, go/no-go
-- [docs/decisions.md](docs/decisions.md): 47 design decisions in plain language
+- [docs/decisions.md](docs/decisions.md): 48 design decisions in plain language
 - [docs/plan.md](docs/plan.md): milestones and repo layout
 - [docs/deploy-gcp.md](docs/deploy-gcp.md) / [docs/deploy.md](docs/deploy.md): deployment guides

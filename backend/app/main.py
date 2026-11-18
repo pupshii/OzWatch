@@ -29,6 +29,7 @@ from app.analytics import Analytics
 from app.api.routes import router
 from app.broadcaster import Broadcaster
 from app.config import Settings, get_settings
+from app.connectors.adsbfi import AdsbfiConnector
 from app.connectors.aisstream import AisStreamConnector
 from app.connectors.base import Connector, StreamConnector
 from app.connectors.nsw_cameras import NswCamerasConnector
@@ -61,7 +62,10 @@ def default_connectors(
         # Order = drawing order on the map: ships under flights.
         (AisStreamConnector(api_key=settings.aisstream_api_key), None),
         (
-            OpenSkyConnector(
+            # Same layer either way; adsb.fi for servers where OpenSky is unreachable.
+            AdsbfiConnector(client)
+            if settings.flights_source == "adsbfi"
+            else OpenSkyConnector(
                 client,
                 client_id=settings.opensky_client_id,
                 client_secret=settings.opensky_client_secret,

@@ -896,6 +896,8 @@ function flightPopup(p, info) {
   if (p.vertical_rate_fpm != null && Math.abs(p.vertical_rate_fpm) >= 100)
     rows.push(["Vertical", `${p.vertical_rate_fpm > 0 ? "climbing" : "descending"} ${fmtNum(Math.abs(p.vertical_rate_fpm))} ft/min`]);
   if (p.squawk) rows.push(["Squawk", p.squawk]);
+  if (p.registration) rows.push(["Registration", p.registration]);
+  if (p.aircraft_type) rows.push(["Aircraft type", p.aircraft_type]);
   if (p.icao24) rows.push(["ICAO 24-bit", p.icao24]);
   if (p.timestamp) rows.push(["Position", `${ageText(p.timestamp)} (${fmtTime(p.timestamp)})`]);
   root.append(kvList(rows));

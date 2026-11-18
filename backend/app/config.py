@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     opensky_client_id: str = ""
     opensky_client_secret: str = ""
 
+    # Where flights come from: "opensky" (default) or "adsbfi" (no key; use it where
+    # OpenSky is unreachable, e.g. some cloud servers).
+    flights_source: str = "opensky"
+
     # aisstream.io API key (ships). Empty -> ships run on sample data.
     aisstream_api_key: str = ""
 
