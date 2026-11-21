@@ -282,6 +282,12 @@ badges, so the map and its key always match. A heading pointer is a separate,
 rotated layer under each vehicle badge, so the pictogram stays upright while
 the pointer shows the direction of travel.
 
+*Update:* public transport vehicles now use top-down silhouettes instead of
+badges, in the same style as the planes and ships: a bus body, three train
+or metro carriages, an articulated tram, a ferry hull. The whole shape
+rotates to the vehicle's bearing, so the separate pointer layer is gone and
+every moving thing on the map reads the same way.
+
 ### 44. One click, one popup
 A single click can land on several of our layers at once (a vehicle badge and
 its heading pointer, a fire dot inside its fire area). Each layer's click

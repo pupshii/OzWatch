@@ -9,7 +9,7 @@
 
 /* global maplibregl */
 import { initAnalytics } from "./analytics.js";
-import { badge, badgeURL, headingPointer } from "./icons.js";
+import { badge, badgeURL, topDown, topDownURL } from "./icons.js";
 import { getParam, setParam } from "./urlstate.js";
 import { initChrome } from "./ui.js";
 
@@ -50,7 +50,10 @@ const LAYER_STYLE = {
   // live: an open popup follows the feature and re-renders when it updates
   fires: { kind: "fire", popup: firePopup, colors: FIRE_COLORS, legend: FIRE_COLORS, legendIcon: () => "flame", areas: true },
   quakes: { kind: "quake", color: "#ae3ec9", icon: "quake", popup: quakePopup, legend: QUAKE_COLORS, decorate: decorateQuake },
-  transit: { kind: "transit", popup: transitPopup, live: true, legend: TRANSIT_COLORS, legendIcon: (label) => TRANSIT_GLYPH[label] },
+  transit: {
+    kind: "transit", popup: transitPopup, live: true, legend: TRANSIT_COLORS, legendIcon: (label) => TRANSIT_GLYPH[label],
+    legendImage: (label, color) => topDownURL(TRANSIT_GLYPH[label], color), // key shows the same shapes as the map
+  },
   ships: { kind: "ship", color: "#1c7ed6", icon: "ship", popup: shipPopup, live: true, colors: SHIP_COLORS, legend: SHIP_COLORS },
   flights: { kind: "plane", color: "#d9480f", icon: "plane", groundColor: "#8a919c", popup: flightPopup, live: true },
 };
@@ -124,8 +127,8 @@ function addLayer(info) {
   if (style.kind === "transit") onLineClick(entry);
 
   const openPopup = (e) => {
-    // A click can hit several of our layers at once (a vehicle badge and its heading
-    // pointer, a fire dot inside its fire area): open only one popup per click.
+    // A click can hit several of our layers at once (e.g. a fire dot inside its fire
+    // area): open only one popup per click.
     if (state.lastPopupClick === e.originalEvent) return;
     // Use our own copy of the feature: MapLibre's rendered copy can lag a delta behind.
     const id = e.features[0].properties.id;
@@ -154,7 +157,7 @@ function addLayer(info) {
   row.querySelector("input").addEventListener("change", (ev) => setVisible(entry, ev.target.checked));
   const swatch = row.querySelector(".swatch");
   if (style.legend) {
-    const box = legend(style.legend, style.legendIcon);
+    const box = legend(style.legend, style.legendIcon, style.legendImage);
     const toggle = row.querySelector(".key-toggle");
     const show = (open) => {
       box.hidden = !open;
@@ -263,17 +266,15 @@ function areaOutline(sourceKey, style) {
   };
 }
 
-// Public transport: a bus/train/metro/ferry/tram badge in Sydney's mode colours, with a
-// small pointer on the rim showing the direction of travel. Buses slightly smaller.
+// Public transport: a top-down bus/train/metro/tram/ferry silhouette in Sydney's mode
+// colours, rotated to the direction of travel (like the plane and ship icons).
 function transitLayer(key) {
   for (const [mode, label] of Object.entries(TRANSIT_MODE)) {
-    map.addImage(`${key}|${mode}`, badge(TRANSIT_COLORS[label], mode), { pixelRatio: 2 });
-    map.addImage(`${key}|${mode}|heading`, headingPointer(TRANSIT_COLORS[label]), { pixelRatio: 2 });
+    map.addImage(`${key}|${mode}`, topDown(mode, TRANSIT_COLORS[label]), { pixelRatio: 2 });
   }
   const mode = ["get", "mode"];
   const known = ["match", mode, Object.keys(TRANSIT_MODE), mode, "bus"];
-  const size = ["interpolate", ["linear"], ["zoom"], 11, ["match", mode, "bus", 0.62, 0.72], 14, ["match", mode, "bus", 0.95, 1.05], 17, 1.3];
-  const common = { "icon-size": size, "icon-allow-overlap": true, "icon-ignore-placement": true, "symbol-sort-key": ["match", mode, "bus", 0, 1] };
+  const size = ["interpolate", ["linear"], ["zoom"], 11, ["match", mode, "bus", 0.6, 0.7], 14, ["match", mode, "bus", 0.9, 1], 17, 1.3];
   map.addSource(`${key}-lines`, { type: "geojson", data: emptyFC(), attribution: "Transport for NSW" });
   const width = ["interpolate", ["linear"], ["zoom"], 8, 2, 11, 3.2, 14, 5.5, 17, 8];
   const before = { before: state.firstPointLayer }; // under cameras, fires, ships, planes...
@@ -298,19 +299,20 @@ function transitLayer(key) {
       paint: { "line-color": ["get", "color"], "line-width": width, "line-opacity": 1 },
     },
     {
-      id: `${key}-heading`,
+      id: key,
       type: "symbol",
       source: key,
       minzoom: 9,
-      filter: ["==", ["typeof", ["get", "bearing"]], "number"], // no pointer when heading is unknown
       layout: {
-        ...common,
-        "icon-image": ["concat", `${key}|`, known, "|heading"],
-        "icon-rotate": ["get", "bearing"],
+        "icon-image": ["concat", `${key}|`, known],
+        "icon-size": size,
+        "icon-rotate": ["coalesce", ["get", "bearing"], 0], // unknown heading: point north
         "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "symbol-sort-key": ["match", mode, "bus", 0, 1], // trains, trams, ferries above buses
       },
     },
-    { id: key, type: "symbol", source: key, minzoom: 9, layout: { ...common, "icon-image": ["concat", `${key}|`, known] } },
   ];
 }
 
@@ -399,12 +401,13 @@ function shipIcon(color, moving) {
   return ctx.getImageData(0, 0, size, size);
 }
 
-function legend(colors, iconFor) {
+function legend(colors, iconFor, imageFor) {
   const box = el("div", null, "legend");
   for (const [label, color] of Object.entries(colors)) {
     const item = el("span", null, "legend-item");
     const chip = el("span", null, iconFor ? "chip icon" : "chip");
-    if (iconFor) chip.style.backgroundImage = `url(${badgeURL(color, iconFor(label))})`;
+    if (imageFor) chip.style.backgroundImage = `url(${imageFor(label, color)})`;
+    else if (iconFor) chip.style.backgroundImage = `url(${badgeURL(color, iconFor(label))})`;
     else chip.style.background = color;
     item.append(chip, document.createTextNode(label));
     box.append(item);

@@ -95,23 +95,6 @@ export function badge(color, glyph) {
   return ctx.getImageData(0, 0, SIZE, SIZE);
 }
 
-/** A small pointer sitting on the badge's rim, pointing up (north). Rotate it with icon-rotate. */
-export function headingPointer(color) {
-  const ctx = canvas();
-  ctx.beginPath();
-  ctx.moveTo(C, 0.8);
-  ctx.lineTo(C - 7, C - R + 6);
-  ctx.lineTo(C + 7, C - R + 6);
-  ctx.closePath();
-  ctx.lineJoin = "round";
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = "#ffffff";
-  ctx.stroke();
-  ctx.fillStyle = color;
-  ctx.fill();
-  return ctx.getImageData(0, 0, SIZE, SIZE);
-}
-
 /** The same badge as a data: URL, for legends and swatches in the side panel. */
 export function badgeURL(color, glyph) {
   const ctx = canvas();
@@ -160,4 +143,99 @@ function line(ctx, d, color, width) {
 
 function legs(ctx, color) {
   line(ctx, "M8.6 18.6L6.8 21.8M15.4 18.6L17.2 21.8", color, 1.8);
+}
+
+// ---------- top-down vehicle silhouettes (public transport) ----------
+// Drawn pointing north so MapLibre can rotate them to the vehicle's bearing, like the
+// plane and ship icons. Mode colour with a white outline; white details for windows/roof.
+
+const TD = 64; // canvas px (2x): 32 css px tall at icon-size 1
+
+const TOP_DOWN = {
+  bus: {
+    body: [rr(7.6, 1.6, 8.8, 20.8, 2.2)],
+    details: [[rr(8.6, 2.5, 6.8, 2.4, 0.9), 0.9], [rr(9.6, 10, 4.8, 4.2, 0.8), 0.35], [rr(9.2, 20, 5.6, 1.3, 0.5), 0.55]],
+  },
+  train: {
+    body: [
+      new Path2D("M8.6 8.2V4.6C8.6 2.4 10 1.2 12 1.2S15.4 2.4 15.4 4.6V8.2Z"),
+      rr(8.6, 9.1, 6.8, 6.4, 0.8),
+      rr(8.6, 16.4, 6.8, 6.4, 0.8),
+    ],
+    details: [
+      [new Path2D("M9.8 4.3Q12 2.7 14.2 4.3V5.1H9.8Z"), 0.9],
+      [rr(11.2, 10.1, 1.6, 4.4, 0.6), 0.35],
+      [rr(11.2, 17.4, 1.6, 4.4, 0.6), 0.35],
+    ],
+  },
+  metro: {
+    body: [
+      new Path2D("M8.8 8.2V5.6C8.8 3 10.2 0.9 12 0.9S15.2 3 15.2 5.6V8.2Z"),
+      rr(8.8, 9.1, 6.4, 6.4, 1.4),
+      rr(8.8, 16.4, 6.4, 6.4, 1.4),
+    ],
+    details: [
+      [new Path2D("M9.8 5.2Q12 1.8 14.2 5.2V6H9.8Z"), 0.9],
+      [rr(9.9, 11.6, 4.2, 1.4, 0.6), 0.4],
+      [rr(9.9, 18.9, 4.2, 1.4, 0.6), 0.4],
+    ],
+  },
+  lightrail: {
+    body: [
+      new Path2D("M9.2 8.4V4C9.2 2.4 10.4 1.4 12 1.4S14.8 2.4 14.8 4V8.4Z"),
+      rr(9.9, 8.4, 4.2, 1.1, 0.3),
+      rr(9.2, 9.5, 5.6, 5, 0.6),
+      rr(9.9, 14.5, 4.2, 1.1, 0.3),
+      new Path2D("M9.2 15.6V20C9.2 21.6 10.4 22.6 12 22.6S14.8 21.6 14.8 20V15.6Z"),
+    ],
+    details: [
+      [new Path2D("M10.2 3.9Q12 2.5 13.8 3.9V4.6H10.2Z"), 0.9],
+      [new Path2D("M10.2 20.1Q12 21.5 13.8 20.1V19.4H10.2Z"), 0.5],
+      [new Path2D("M10.8 12L12 10.6L13.2 12L12 13.4Z"), 0.6],
+    ],
+  },
+  ferry: {
+    body: [new Path2D("M12 1.2C15 4 16.6 8 16.6 12.5V19.5C16.6 21.6 14.8 22.8 12 22.8S7.4 21.6 7.4 19.5V12.5C7.4 8 9 4 12 1.2Z")],
+    details: [[rr(9.2, 8.2, 5.6, 11, 1.6), 0.4], [rr(9.8, 6.3, 4.4, 2.2, 0.8), 0.9]],
+  },
+};
+
+/** Top-down silhouette for a transit mode, pointing north. ImageData for map.addImage(..., {pixelRatio: 2}). */
+export function topDown(mode, color) {
+  const shape = TOP_DOWN[mode] || TOP_DOWN.bus;
+  const c = document.createElement("canvas");
+  c.width = c.height = TD;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.scale(TD / 24, TD / 24);
+  // white outline (with a soft shadow) under the body, so it stands out on any background
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+  ctx.shadowBlur = 1.5;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.6;
+  ctx.lineJoin = "round";
+  for (const part of shape.body) ctx.stroke(part);
+  ctx.restore();
+  ctx.fillStyle = color;
+  for (const part of shape.body) ctx.fill(part);
+  for (const [part, alpha] of shape.details) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "#ffffff";
+    ctx.fill(part);
+  }
+  ctx.globalAlpha = 1;
+  return ctx.getImageData(0, 0, TD, TD);
+}
+
+export function topDownURL(mode, color) {
+  const c = document.createElement("canvas");
+  c.width = c.height = TD;
+  c.getContext("2d").putImageData(topDown(mode, color), 0, 0);
+  return c.toDataURL("image/png");
+}
+
+function rr(x, y, w, h, r) {
+  const p = new Path2D();
+  p.roundRect(x, y, w, h, r);
+  return p;
 }

@@ -20,7 +20,7 @@ access, rate limits and licence before any code was written
 
 ## Features
 
-- **Six live layers** with recognisable icons (bus, train, ferry, tram, camera, flame badges; planes and ships rotated to their heading), each toggleable, with a "last updated" time, a health dot and source attribution
+- **Six live layers** with recognisable icons (top-down planes, ships, buses, trains, trams and ferries rotated to their heading; camera and flame badges), each toggleable, with a "last updated" time, a health dot and source attribution
   - **Traffic cameras (NSW):** about 250 cameras; click for the latest image (Transport for NSW)
   - **Flights:** ADS-B aircraft over Australia, icons rotated to their heading (OpenSky Network)
   - **Ships:** live AIS positions over a websocket, coloured by vessel type (aisstream.io)
